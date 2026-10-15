@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# App data (database and attachments; keep the folder so Docker doesn't create it as root)
+data/*
+!data/.gitkeep
+
+# Node / Cloudflare
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+
+# Environment and editors
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
+
+# Local NAS deploy settings (scripts/deploy-nas.sh)
+.deploy.env
