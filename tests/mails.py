@@ -40,3 +40,13 @@ def build_mail(
         maintype, subtype = content_type.split("/")
         msg.add_attachment(content, maintype=maintype, subtype=subtype, filename=name)
     return msg.as_bytes()
+
+
+INBOUND_SECRET = "s3cret"
+
+
+def post_mail(client, raw, envelope_to=None, secret=INBOUND_SECRET):
+    headers = {"X-Inbound-Secret": secret, "Content-Type": "message/rfc822"}
+    if envelope_to:
+        headers["X-Envelope-To"] = envelope_to
+    return client.post("/api/inbound", content=raw, headers=headers)

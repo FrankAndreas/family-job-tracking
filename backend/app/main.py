@@ -2,7 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
-from . import applications_api, database, models, users_api
+from . import applications_api, database, inbox_api, models, users_api
 from .seed import seed_admin
 from .settings_store import get_settings
 
@@ -21,6 +21,7 @@ if _initial_pin:
 app = FastAPI(title="Family Job Tracking API", version="0.1.0")
 app.include_router(users_api.router, prefix="/api")
 app.include_router(applications_api.router, prefix="/api")
+app.include_router(inbox_api.router, prefix="/api")
 
 
 @app.get("/health")
