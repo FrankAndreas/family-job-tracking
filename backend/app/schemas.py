@@ -151,3 +151,16 @@ class InboxApplicationIn(BaseModel):
     position: str = Field("", max_length=200)
 
     check_company = field_validator("company")(clean_company)
+
+
+class SettingsPatch(BaseModel):
+    followup_days: int | None = Field(None, ge=1, le=365)
+    reminder_time: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    inbound_address: str | None = None
+
+    @field_validator("inbound_address")
+    @classmethod
+    def check_inbound_address(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return clean_email(value) or ""

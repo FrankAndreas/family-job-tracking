@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import applications_api, config, database, inbox_api, models, reminders, users_api
+from . import applications_api, config, database, inbox_api, models, reminders, settings_api, users_api
 from .seed import seed_admin
 from .settings_store import get_settings
 
@@ -42,6 +42,7 @@ app = FastAPI(title="Family Job Tracking API", version="0.1.0", lifespan=lifespa
 app.include_router(users_api.router, prefix="/api")
 app.include_router(applications_api.router, prefix="/api")
 app.include_router(inbox_api.router, prefix="/api")
+app.include_router(settings_api.router, prefix="/api")
 
 
 @app.get("/health")
