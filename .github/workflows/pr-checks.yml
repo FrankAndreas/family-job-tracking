@@ -1,0 +1,61 @@
+name: Checks
+
+on:
+  pull_request:
+  # Also run by ci-cd.yml before images are built
+  workflow_call:
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+      - run: pip install -r backend/requirements.txt -r tests/requirements.txt
+      # The tests run the API in-process against a temporary SQLite database (see tests/conftest.py)
+      - run: pytest
+
+  frontend:
+    name: Frontend lint, type-check and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  worker:
+    name: Email worker tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare/email-worker
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: cloudflare/email-worker/package-lock.json
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm test
+
+  compose:
+    name: Validate docker-compose.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose config --quiet
