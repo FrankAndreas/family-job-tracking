@@ -1,0 +1,106 @@
+export type Status = 'draft' | 'open' | 'in_contact' | 'closed_offer' | 'closed_rejection' | 'closed_withdrawn';
+export type EventType =
+    | 'sent' | 'followed_up' | 'reply_received' | 'mail_sent' | 'mail_received' | 'call'
+    | 'interview' | 'trial' | 'offer' | 'rejection' | 'withdrawn' | 'note';
+export type Channel = 'email' | 'portal' | 'post' | 'in_person' | 'other';
+
+export interface User {
+    id: number;
+    name: string;
+    is_admin: boolean;
+    email: string | null;
+    wants_reminders: boolean;
+}
+
+export interface Attachment {
+    id: number;
+    filename: string;
+    content_type: string;
+    size: number;
+    path: string;
+}
+
+export interface EmailItem {
+    id: number;
+    message_id: string;
+    from_addr: string;
+    to_addrs: string;
+    subject: string;
+    body_text: string;
+    received_at: string;
+    application_id: number | null;
+    parse_error: string | null;
+    attachments: Attachment[];
+}
+
+export interface TimelineEvent {
+    id: number;
+    occurred_at: string;
+    type: EventType;
+    note: string;
+    created_by_name: string | null;
+    email: EmailItem | null;
+    attachments: Attachment[];
+}
+
+export interface ApplicationSummary {
+    id: number;
+    company: string;
+    position: string;
+    location: string;
+    status: Status;
+    archived: boolean;
+    due: boolean;
+    last_event_type: EventType | null;
+    last_event_at: string | null;
+    days_since_last: number | null;
+    mail_tag: string;
+}
+
+export interface ApplicationFormValues {
+    company: string;
+    position: string;
+    location: string;
+    contact_name: string;
+    contact_email: string;
+    contact_phone: string;
+    posting_url: string;
+    channel: Channel;
+    notes: string;
+}
+
+export interface ApplicationDetail extends ApplicationSummary, ApplicationFormValues {
+    created_at: string;
+    created_by_name: string | null;
+    mail_address: string | null;
+    events: TimelineEvent[];
+}
+
+export interface Dashboard {
+    counts: Record<Status, number>;
+    due: ApplicationSummary[];
+    inbox_count: number;
+}
+
+export interface InboxItem extends EmailItem {
+    suggestion: { id: number; company: string; position: string } | null;
+}
+
+export interface AppSettings {
+    followup_days: number;
+    reminder_time: string;
+    inbound_address: string;
+}
+
+export type IntegrationState = 'not_configured' | 'waiting' | 'ok' | 'error';
+
+export interface Integration {
+    state: IntegrationState;
+    details: Record<string, string | number | string[] | null>;
+    warnings: string[];
+}
+
+export interface Integrations {
+    inbound: Integration;
+    reminders: Integration;
+}
