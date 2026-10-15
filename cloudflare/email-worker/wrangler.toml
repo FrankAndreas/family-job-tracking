@@ -1,0 +1,14 @@
+# Cloudflare Email Worker: forwards every mail for bewerbungen@<domain> to the app.
+# Setup: README_DOCKER.md, "Incoming e-mails".
+name = "family-jobs-inbound"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Public URL of the app through the Cloudflare Tunnel
+APP_URL = "https://bewerbungen.example.ch"
+
+# Secrets, set with `npx wrangler secret put <NAME>`:
+#   INBOUND_SECRET            same value as INBOUND_SECRET in the app's .env
+#   CF_ACCESS_CLIENT_ID       Cloudflare Access service token for /api/inbound
+#   CF_ACCESS_CLIENT_SECRET
