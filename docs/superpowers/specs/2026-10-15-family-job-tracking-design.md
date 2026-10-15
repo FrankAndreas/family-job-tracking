@@ -58,7 +58,7 @@ Repository layout:
 backend/            FastAPI app, Dockerfile, requirements.txt
 frontend/           React app, Dockerfile, nginx.conf
 cloudflare/email-worker/   Worker source, wrangler.toml, tests
-tests/              backend pytest suite (+ tests/fixtures/*.eml)
+tests/              backend pytest suite (+ tests/mails.py, which builds test e-mails)
 scripts/            deploy-nas.sh, nas-update.sh
 docker-compose.yml, .env.example, README.md, README_DOCKER.md
 .github/workflows/  pr-checks.yml, ci-cd.yml
