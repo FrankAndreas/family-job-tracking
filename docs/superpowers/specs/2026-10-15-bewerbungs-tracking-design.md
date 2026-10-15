@@ -156,11 +156,12 @@ All under `/api`, JSON, JWT bearer auth unless noted.
 - `GET /api/users/public` (no auth): names for the login screen. `POST /api/token`: login.
 - `GET/PATCH /api/me`, `POST /api/me/pin`.
 - `GET/POST /api/users`, `PATCH/DELETE /api/users/{id}`, `POST /api/users/{id}/pin` (admin).
-- `GET /api/applications?status=&q=&archived=` (list with derived status, last event, due flag),
+- `GET /api/applications?status=&q=&include_archived=` (list with derived status, last event, due flag),
   `POST`, `GET/PATCH/DELETE /api/applications/{id}`.
 - `GET /api/dashboard`: counts per status and the due list.
 - `POST /api/applications/{id}/events` (multipart: fields + files), `PATCH/DELETE /api/events/{id}`.
-- `GET /api/attachments/{id}`: download. `DELETE /api/attachments/{id}`.
+- `GET /api/attachments/{id}`: download. `PATCH /api/events/{id}` takes JSON `type`,
+  `occurred_at`, `note`. `DELETE /api/attachments/{id}`.
 - `GET /api/inbox`: unassigned, not dismissed e-mails with a suggested application.
   `POST /api/inbox/{email_id}/assign` (`application_id`, optional event type),
   `POST /api/inbox/{email_id}/create-application` (`company`, `position`),
@@ -179,7 +180,10 @@ Cloudflare setup (documented in `README_DOCKER.md`):
 1. Email Routing enabled on the domain, subaddressing enabled, a custom address
    `bewerbungen@<domain>` routed to the Worker `bewerbungen-inbound`.
 2. The Worker reads `message.raw`, and POSTs it to `APP_URL/api/inbound` with headers
-   `CF-Access-Client-Id`, `CF-Access-Client-Secret` and `X-Inbound-Secret` (all Worker secrets).
+   `CF-Access-Client-Id`, `CF-Access-Client-Secret` and `X-Inbound-Secret` (all Worker secrets),
+   plus `X-Envelope-To: message.to`. The envelope recipient matters for BCC: a BCC'd `+tag`
+   address appears in no header of the mail. The request does not follow redirects, so an Access
+   login redirect counts as a failure.
 3. If the response is not 2xx, the Worker calls `message.setReject(...)`, so the sender gets a
    bounce instead of the mail being lost silently.
 
@@ -189,7 +193,8 @@ Backend processing of `POST /api/inbound`:
    with 413. If `INBOUND_SECRET` is unset, the endpoint returns 503.
 2. Parse with Python's `email` package (`policy.default`). Take the `Message-ID`; if it already
    exists, return 200 without changes (duplicate delivery).
-3. Find the tag: the first recipient in `To`/`Cc`/`Delivered-To`/`X-Original-To` of the form
+3. Find the tag: the first recipient in `X-Envelope-To`, `To`, `Cc`, `Delivered-To` or
+   `X-Original-To` of the form
    `<local>+<tag>@<domain>` whose tag matches an application's `mail_tag` (case-insensitive).
 4. Store the raw `.eml`, the text body (plain part, else HTML converted to text) and all
    attachments using the file naming rules above.
@@ -208,7 +213,7 @@ recently active one.
 
 - Optional. The app starts and works fully without it: when `RESEND_API_KEY` or `MAIL_FROM` is
   missing, the reminder task is not started and the integration shows as "nicht konfiguriert".
-- A background task in the backend wakes every hour. If the local time (Europe/Zurich) is past
+- A background task in the backend wakes every 15 minutes. If the local time (Europe/Zurich) is past
   `reminder_time` and `last_reminder_date` is not today, it builds the digest:
   - due applications (company, position, days since last event, link `APP_URL/bewerbungen/{id}`)
   - number of unassigned inbox e-mails, with a link to the inbox
@@ -216,7 +221,7 @@ recently active one.
 - Otherwise it sends one e-mail (German, simple HTML + text) via the Resend HTTP API to every user
   with `wants_reminders` and an `email`. Only after all sends succeed is `last_reminder_date`
   set; on failure it logs the error, stores it in `last_reminder_error` and retries on the next
-  hourly run. Every attempt sets `last_reminder_attempt_at`; a success sets
+  run. Every attempt sets `last_reminder_attempt_at`; a success sets
   `last_reminder_sent_at` and clears the error.
 - The Settings page has a "Test-Erinnerung senden" button for the current user.
 
@@ -275,7 +280,7 @@ German UI, mobile-first, React Router.
 - API errors return JSON `{"detail": "..."}` with proper status codes; the frontend shows them as
   a toast in German.
 - Unreadable inbound e-mails are kept (see above); nothing is dropped.
-- Failed reminder sends are logged and retried hourly.
+- Failed reminder sends are logged and retried on the next 15-minute check.
 - Deleting an application deletes its events, e-mails and files (with a confirmation dialog in the
   UI); archiving is the normal way to hide finished applications.
 
