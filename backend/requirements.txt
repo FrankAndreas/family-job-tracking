@@ -1,0 +1,9 @@
+fastapi==0.143.0
+uvicorn==0.54.0
+sqlalchemy==2.1.4
+pydantic==2.14.1
+python-multipart==0.0.32
+bcrypt==5.0.0
+python-jose[cryptography]==3.5.0
+# Time zone database for zoneinfo; the slim Docker image has none
+tzdata==2025.2
