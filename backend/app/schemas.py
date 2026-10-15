@@ -139,3 +139,15 @@ class EventPatch(BaseModel):
     type: EventType | None = None
     occurred_at: datetime | None = None
     note: str | None = None
+
+
+class AssignIn(BaseModel):
+    application_id: int
+    event_type: EventType | None = None
+
+
+class InboxApplicationIn(BaseModel):
+    company: str = Field(max_length=200)
+    position: str = Field("", max_length=200)
+
+    check_company = field_validator("company")(clean_company)

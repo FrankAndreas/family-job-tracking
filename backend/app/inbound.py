@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from . import files as filestore
 from . import mailparse, models
+from . import status as st
 from .settings_store import get_settings
 from .timeutil import local_date, utcnow
 
@@ -134,3 +135,44 @@ def _store_unreadable(
     db.commit()
     logger.warning("Stored an unreadable e-mail in the inbox: %s", error)
     return email
+
+
+def assign(
+    db: Session, email: models.Email, application: models.Application, event_type: models.EventType | None = None
+) -> models.Event:
+    """Link an inbox e-mail to an application: move its files into the company folder and add it to the timeline."""
+    if email.raw_path:
+        email.raw_path = filestore.move_to_company(email.raw_path, application.company)
+    for attachment in email.attachments:
+        attachment.path = filestore.move_to_company(attachment.path, application.company)
+    email.application_id = application.id
+    db.flush()
+    return create_mail_event(db, email, application, event_type)
+
+
+def suggest(db: Session, email: models.Email) -> models.Application | None:
+    """The active application the sender's domain belongs to (contact address or earlier e-mails)."""
+    domain = mailparse.sender_domain(email.from_addr)
+    if not domain or domain in FREEMAIL_DOMAINS:
+        return None
+    pattern = f"%@{domain}"
+    candidates = {
+        a.id: a
+        for a in db.query(models.Application).filter(
+            models.Application.archived.is_(False), models.Application.contact_email.like(pattern)
+        )
+    }
+    earlier = db.query(models.Email).filter(
+        models.Email.application_id.isnot(None), models.Email.from_addr.like(pattern)
+    )
+    for other in earlier:
+        if not other.application.archived:
+            candidates[other.application.id] = other.application
+    if not candidates:
+        return None
+
+    def last_activity(application: models.Application):
+        last = st.latest(application.events)
+        return last.occurred_at if last else application.created_at
+
+    return max(candidates.values(), key=last_activity)
