@@ -6,6 +6,7 @@ import ApplicationPage from './pages/ApplicationPage';
 import Inbox from './pages/Inbox';
 import Login from './pages/Login';
 import Overview from './pages/Overview';
+import SettingsPage from './pages/SettingsPage';
 import { ToastProvider } from './ToastContext';
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -31,6 +32,7 @@ export default function App() {
                             <Route index element={<Overview />} />
                             <Route path="bewerbungen/:id" element={<ApplicationPage />} />
                             <Route path="posteingang" element={<Inbox />} />
+                            <Route path="einstellungen" element={<SettingsPage />} />
                         </Route>
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
