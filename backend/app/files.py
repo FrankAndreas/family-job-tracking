@@ -71,21 +71,38 @@ def absolute(rel_path: str) -> Path:
     return path
 
 
-def move_to_company(rel_path: str, company: str) -> str:
-    """Move a stored file into the company's folder, renamed with the company; returns the new path."""
+def _move(rel_path: str, folder_name: str, prefix: str) -> str:
+    """Move a stored file to <folder>/<date>_<prefix>_<rest>; a missing file keeps its old path."""
     source = absolute(rel_path)
-    slug = company_slug(company)
+    if not source.exists():
+        return rel_path
     parts = source.name.split("_", 2)
     if len(parts) == 3:
         day, _prefix, rest = parts
     else:
         day, rest = date.today().isoformat(), source.name
     stem, ext = os.path.splitext(rest)
-    folder = config.files_dir() / slug
+    folder = config.files_dir() / folder_name
     folder.mkdir(parents=True, exist_ok=True)
-    target = _unique(folder, f"{day}_{slug}_{stem}", ext)
+    target = _unique(folder, f"{day}_{prefix}_{stem}", ext)
     shutil.move(source, target)
     return target.relative_to(config.files_dir()).as_posix()
+
+
+def move_to_company(rel_path: str, company: str) -> str:
+    """Move a stored file into the company's folder, renamed with the company; returns the new path."""
+    slug = company_slug(company)
+    return _move(rel_path, slug, slug)
+
+
+def move_to_inbox(rel_path: str, sender_domain: str) -> str:
+    """Move a stored file back to the inbox folder, renamed with the sender's domain."""
+    return _move(rel_path, INBOX_FOLDER, slugify(sender_domain, fallback="unbekannt"))
+
+
+def rename(rel_from: str, rel_to: str) -> None:
+    """Undo a move: put the file back where it was."""
+    shutil.move(absolute(rel_from), absolute(rel_to))
 
 
 def delete(rel_path: str) -> None:

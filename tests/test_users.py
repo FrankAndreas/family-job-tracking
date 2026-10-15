@@ -44,3 +44,13 @@ def test_admin_deletes_user(client, admin_headers):
     user = create_user(client, admin_headers, "Sohn")
     assert client.delete(f"/api/users/{user['id']}", headers=admin_headers).status_code == 204
     assert [u["name"] for u in client.get("/api/users/public").json()] == ["Admin"]
+
+
+def test_token_of_deleted_user_does_not_pass_to_next_user(client, admin_headers):
+    # SQLite reuses the highest id unless the table uses AUTOINCREMENT
+    create_user(client, admin_headers, "Sohn")
+    son = login(client, "Sohn", "5678")
+    son_id = client.get("/api/me", headers=son).json()["id"]
+    assert client.delete(f"/api/users/{son_id}", headers=admin_headers).status_code == 204
+    create_user(client, admin_headers, "Gast", is_admin=True)
+    assert client.get("/api/me", headers=son).status_code == 401

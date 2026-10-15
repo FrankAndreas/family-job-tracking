@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from . import auth
 from . import files as filestore
+from . import inbound
 from . import models, schemas
 from . import status as st
 from . import views
@@ -190,6 +191,9 @@ def update_event(event_id: int, body: schemas.EventPatch, db: Session = Depends(
 @router.delete("/events/{event_id}", status_code=204)
 def delete_event(event_id: int, db: Session = Depends(get_db)):
     event = _get_event(db, event_id)
+    if event.email is not None:
+        # The mail itself stays: back to the inbox, so it can be assigned again
+        inbound.unassign(event.email)
     _delete_attachment_files(event.attachments)
     db.delete(event)
     db.commit()

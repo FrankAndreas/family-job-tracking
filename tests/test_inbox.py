@@ -112,3 +112,58 @@ def test_read_email_and_raw(client, admin_headers):
     response = client.get(f"/api/emails/{email_id}/raw", headers=admin_headers)
     assert response.status_code == 200
     assert response.content == raw
+
+
+def test_assign_with_a_missing_file_still_works(client, admin_headers):
+    migros = create_application(client, admin_headers, "Migros")
+    attachments = [("Zeugnis.pdf", b"x", "application/pdf"), ("Brief.pdf", b"y", "application/pdf")]
+    post_mail(client, build_mail(to="bewerbungen@example.ch", attachments=attachments))
+    email = inbox(client, admin_headers)[0]
+    # Someone deleted one attachment in File Station
+    (config.files_dir() / email["attachments"][0]["path"]).unlink()
+    response = client.post(
+        f"/api/inbox/{email['id']}/assign", json={"application_id": migros["id"]}, headers=admin_headers
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["attachments"][1]["path"] == "migros/2026-10-15_migros_Brief.pdf"
+    assert client.get(f"/api/emails/{email['id']}/raw", headers=admin_headers).status_code == 200
+
+
+def test_failed_assign_moves_files_back(client, admin_headers, monkeypatch):
+    from app import files
+
+    migros = create_application(client, admin_headers, "Migros")
+    post_mail(client, build_mail(to="bewerbungen@example.ch", attachments=[("Zeugnis.pdf", b"x", "application/pdf")]))
+    email = inbox(client, admin_headers)[0]
+    real_move = files.move_to_company
+    calls = []
+
+    def failing_second_move(rel_path, company):
+        calls.append(rel_path)
+        if len(calls) == 2:
+            raise OSError("disk full")
+        return real_move(rel_path, company)
+
+    monkeypatch.setattr(files, "move_to_company", failing_second_move)
+    with pytest.raises(OSError):
+        client.post(f"/api/inbox/{email['id']}/assign", json={"application_id": migros["id"]}, headers=admin_headers)
+    assert sorted(p.name for p in (config.files_dir() / "_posteingang").iterdir()) == [
+        "2026-10-15_migros-ch_Zeugnis.pdf",
+        "2026-10-15_migros-ch_mail-Ihre-Bewerbung.eml",
+    ]
+    assert len(inbox(client, admin_headers)) == 1
+
+
+def test_deleting_the_mail_event_returns_the_mail_to_the_inbox(client, admin_headers):
+    migros = create_application(client, admin_headers, "Migros")
+    post_mail(client, build_mail(to="bewerbungen@example.ch", attachments=[("Zeugnis.pdf", b"x", "application/pdf")]))
+    email_id = inbox(client, admin_headers)[0]["id"]
+    client.post(f"/api/inbox/{email_id}/assign", json={"application_id": migros["id"]}, headers=admin_headers)
+    event = client.get(f"/api/applications/{migros['id']}", headers=admin_headers).json()["events"][0]
+    assert client.delete(f"/api/events/{event['id']}", headers=admin_headers).status_code == 204
+
+    items = inbox(client, admin_headers)
+    assert [i["id"] for i in items] == [email_id]
+    path = items[0]["attachments"][0]["path"]
+    assert path == "_posteingang/2026-10-15_migros-ch_Zeugnis.pdf"
+    assert (config.files_dir() / path).exists()

@@ -141,10 +141,7 @@ def assign(
     db: Session, email: models.Email, application: models.Application, event_type: models.EventType | None = None
 ) -> models.Event:
     """Link an inbox e-mail to an application: move its files into the company folder and add it to the timeline."""
-    if email.raw_path:
-        email.raw_path = filestore.move_to_company(email.raw_path, application.company)
-    for attachment in email.attachments:
-        attachment.path = filestore.move_to_company(attachment.path, application.company)
+    _move_files(email, lambda path: filestore.move_to_company(path, application.company))
     email.application_id = application.id
     db.flush()
     return create_mail_event(db, email, application, event_type)
@@ -176,3 +173,28 @@ def suggest(db: Session, email: models.Email) -> models.Application | None:
         return last.occurred_at if last else application.created_at
 
     return max(candidates.values(), key=last_activity)
+
+
+def _move_files(email: models.Email, move) -> None:
+    """Move the e-mail's .eml and attachments with move(path) -> new path; all of them, or none on an error."""
+    holders = ([(email, "raw_path")] if email.raw_path else []) + [(a, "path") for a in email.attachments]
+    moved = []
+    try:
+        for holder, attr in holders:
+            old = getattr(holder, attr)
+            new = move(old)
+            moved.append((holder, attr, old, new))
+            setattr(holder, attr, new)
+    except Exception:
+        for holder, attr, old, new in reversed(moved):
+            if new != old:
+                filestore.rename(new, old)
+            setattr(holder, attr, old)
+        raise
+
+
+def unassign(email: models.Email) -> None:
+    """Put an e-mail back into the inbox, e.g. after its timeline event was deleted."""
+    domain = mailparse.sender_domain(email.from_addr)
+    _move_files(email, lambda path: filestore.move_to_inbox(path, domain))
+    email.application_id = None

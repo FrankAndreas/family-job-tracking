@@ -54,7 +54,10 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
         }
     };
     const deleteEvent = () => {
-        if (window.confirm('Dieses Ereignis löschen?')) run(() => api.delete(`/api/events/${event.id}`));
+        const question = email
+            ? 'Dieses Ereignis löschen? Die Mail kommt zurück in den Posteingang.'
+            : 'Dieses Ereignis löschen?';
+        if (window.confirm(question)) run(() => api.delete(`/api/events/${event.id}`));
     };
     const deleteAttachment = (a: Attachment) => {
         if (window.confirm(`${a.filename} löschen?`)) run(() => api.delete(`/api/attachments/${a.id}`));

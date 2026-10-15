@@ -32,6 +32,8 @@ class Channel(str, enum.Enum):
 
 class User(Base):
     __tablename__ = "users"
+    # Never reuse ids: login tokens name the user by id, so a deleted user's token must not match a new user
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, nullable=False)
