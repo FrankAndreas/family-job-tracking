@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .models import Channel, EventType
 
 PIN_PATTERN = r"^\d{4,8}$"
 
@@ -83,3 +87,55 @@ class UserPatch(BaseModel):
 
     check_name = field_validator("name")(clean_name)
     check_email = field_validator("email")(clean_email)
+
+
+def clean_company(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        raise ValueError("Firma fehlt")
+    return value
+
+
+def lower_strip(value: str | None) -> str | None:
+    return None if value is None else value.strip().lower()
+
+
+class ApplicationIn(BaseModel):
+    company: str = Field(max_length=200)
+    position: str = Field("", max_length=200)
+    location: str = Field("", max_length=200)
+    contact_name: str = Field("", max_length=200)
+    contact_email: str = Field("", max_length=200)
+    contact_phone: str = Field("", max_length=50)
+    posting_url: str = Field("", max_length=500)
+    channel: Channel = Channel.EMAIL
+    notes: str = ""
+
+    check_company = field_validator("company")(clean_company)
+    check_contact_email = field_validator("contact_email")(lower_strip)
+
+
+class ApplicationPatch(BaseModel):
+    """Fields left out or sent as null stay unchanged."""
+
+    company: str | None = Field(None, max_length=200)
+    position: str | None = Field(None, max_length=200)
+    location: str | None = Field(None, max_length=200)
+    contact_name: str | None = Field(None, max_length=200)
+    contact_email: str | None = Field(None, max_length=200)
+    contact_phone: str | None = Field(None, max_length=50)
+    posting_url: str | None = Field(None, max_length=500)
+    channel: Channel | None = None
+    notes: str | None = None
+    archived: bool | None = None
+
+    check_company = field_validator("company")(clean_company)
+    check_contact_email = field_validator("contact_email")(lower_strip)
+
+
+class EventPatch(BaseModel):
+    type: EventType | None = None
+    occurred_at: datetime | None = None
+    note: str | None = None
