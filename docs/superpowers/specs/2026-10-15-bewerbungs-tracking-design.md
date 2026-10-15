@@ -97,7 +97,8 @@ docker-compose.yml, .env.example, README.md, README_DOCKER.md
 `settings` (single row)
 - `followup_days` (default 10), `reminder_time` (default `07:00`, Europe/Zurich),
   `inbound_address` (e.g. `bewerbungen@<domain>`, used to display `+tag` addresses),
-  `last_reminder_date`
+  `last_reminder_date`, `last_reminder_attempt_at`, `last_reminder_sent_at`,
+  `last_reminder_error` (nullable), `last_inbound_at`, `last_inbound_error` (nullable)
 
 ### Derived status
 
@@ -166,6 +167,7 @@ All under `/api`, JSON, JWT bearer auth unless noted.
   `POST /api/inbox/{email_id}/dismiss`.
 - `GET /api/emails/{id}`: full e-mail incl. body. `GET /api/emails/{id}/raw`: the `.eml`.
 - `GET/PATCH /api/settings` (patch: admin).
+- `GET /api/integrations`: status of the optional integrations (see "Integration status").
 - `GET /api/export`: ZIP with CSVs of all tables and the `files/` tree.
 - `POST /api/inbound` (no JWT; `X-Inbound-Secret` header): raw MIME body.
 - `GET /health` (no auth).
@@ -204,8 +206,8 @@ recently active one.
 
 ## Reminder e-mails
 
-- Enabled when `RESEND_API_KEY` and `MAIL_FROM` are set; otherwise the feature is off and the
-  settings page says so.
+- Optional. The app starts and works fully without it: when `RESEND_API_KEY` or `MAIL_FROM` is
+  missing, the reminder task is not started and the integration shows as "nicht konfiguriert".
 - A background task in the backend wakes every hour. If the local time (Europe/Zurich) is past
   `reminder_time` and `last_reminder_date` is not today, it builds the digest:
   - due applications (company, position, days since last event, link `APP_URL/bewerbungen/{id}`)
@@ -213,8 +215,26 @@ recently active one.
 - If the digest is empty, it sets `last_reminder_date` to today and sends nothing.
 - Otherwise it sends one e-mail (German, simple HTML + text) via the Resend HTTP API to every user
   with `wants_reminders` and an `email`. Only after all sends succeed is `last_reminder_date`
-  set; on failure it logs the error and retries on the next hourly run.
+  set; on failure it logs the error, stores it in `last_reminder_error` and retries on the next
+  hourly run. Every attempt sets `last_reminder_attempt_at`; a success sets
+  `last_reminder_sent_at` and clears the error.
 - The Settings page has a "Test-Erinnerung senden" button for the current user.
+
+## Integration status
+
+Both integrations are optional; the app never refuses to start because one is missing or broken.
+Startup logs one line per integration ("configured" / "not configured").
+
+`GET /api/integrations` returns, per integration, a state and details:
+
+| Integration | States | Details shown |
+|---|---|---|
+| Eingehende Mails (Cloudflare Worker) | `not_configured` (no `INBOUND_SECRET`), `waiting` (configured, nothing received yet), `ok`, `error` (last delivery failed to parse) | inbound address, time of last received e-mail, last error |
+| Erinnerungen (Resend) | `not_configured` (no `RESEND_API_KEY`/`MAIL_FROM`), `ok`, `error` (last send failed) | sender, recipients (users with reminders on), next planned run, last attempt, last successful send, last error |
+
+`last_inbound_at` is set on every accepted `POST /api/inbound`; `last_inbound_error` is set when
+parsing fails and cleared by the next successful one. `APP_URL` missing is shown as a warning on
+the reminder integration (links in the e-mail would be missing).
 
 ## Frontend
 
@@ -232,7 +252,10 @@ German UI, mobile-first, React Router.
    per e-mail: suggested application, "Bewerbung wählen", "Neue Bewerbung daraus erstellen",
    "Verwerfen".
 5. **Einstellungen** (`/einstellungen`): own PIN, e-mail and reminder opt-in; admin: users,
-   follow-up days, reminder time, inbound address; test reminder; export ZIP.
+   follow-up days, reminder time, inbound address; export ZIP; section **Integrationen** with a
+   card per integration (green ok / grey nicht konfiguriert / orange wartet / red Fehler, plus
+   the details above) and the "Test-Erinnerung senden" button on the Resend card. A red
+   integration also shows a small warning dot on the Einstellungen navigation item.
 
 ## Configuration (`.env`)
 
@@ -266,6 +289,8 @@ German UI, mobile-first, React Router.
     `Message-ID`, broken MIME, wrong secret, oversize body (fixtures in `tests/fixtures/*.eml`)
   - inbox: suggestion, assign (files moved), create application, dismiss
   - reminders: digest content, empty digest, opt-out, failure and retry (Resend mocked)
+  - integration status: not configured, waiting, ok, error for both integrations; app starts
+    without `RESEND_API_KEY` and `INBOUND_SECRET`
   - export ZIP contents
 - Frontend: `tsc`, ESLint and `vite build` in CI.
 - Worker: Vitest test with a mocked `fetch` for success and reject paths.
