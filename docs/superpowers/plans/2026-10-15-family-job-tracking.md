@@ -6653,8 +6653,8 @@ sleep 15
 curl -sf http://localhost:8082/api/users/public
 TOKEN=$(curl -sf -X POST -H 'Content-Type: application/json' -d '{"name":"Admin","pin":"1234"}' http://localhost:8082/api/token | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
 curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:8082/api/integrations
-# A 20 MB mail must pass nginx (client_max_body_size) and be stored
-venv/bin/python -c "import sys; sys.path.insert(0,'tests'); from mails import build_mail; sys.stdout.buffer.write(build_mail(to='bewerbungen@example.ch', attachments=[('gross.pdf', b'x'*20_000_000, 'application/pdf')]))" \
+# A ~20 MB mail (15 MB attachment, base64) must pass nginx (client_max_body_size) and be stored
+venv/bin/python -c "import sys; sys.path.insert(0,'tests'); from mails import build_mail; sys.stdout.buffer.write(build_mail(to='bewerbungen@example.ch', attachments=[('gross.pdf', b'x'*15_000_000, 'application/pdf')]))" \
   | curl -s -X POST -H 'X-Inbound-Secret: dev' --data-binary @- http://localhost:8082/api/inbound
 ls data/files/_posteingang
 docker compose down
