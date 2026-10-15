@@ -1,4 +1,4 @@
-# Bewerbungs-Tracking — Design
+# Family Job Tracking — Design
 
 Date: 2026-10-15
 Status: Draft for review
@@ -41,11 +41,11 @@ Two containers from GHCR, same layout as `family-budget-dashboard`:
 
 | Component | Tech | Notes |
 |---|---|---|
-| `bewerbungen-backend` | Python, FastAPI, SQLAlchemy, SQLite | DB at `./data/bewerbungen.db`, files under `./data/files/`; runs as `PUID:PGID` |
-| `bewerbungen-frontend` | React, Vite, TypeScript, Tailwind, nginx | serves the SPA on port 8080, proxies `/api` to the backend; published on `PORT` (default 8082) |
+| `jobs-backend` | Python, FastAPI, SQLAlchemy, SQLite | DB at `./data/jobs.db`, files under `./data/files/`; runs as `PUID:PGID` |
+| `jobs-frontend` | React, Vite, TypeScript, Tailwind, nginx | serves the SPA on port 8080, proxies `/api` to the backend; published on `PORT` (default 8082) |
 | `cloudflare/email-worker/` | Cloudflare Worker (TypeScript, wrangler) | deployed to Cloudflare, not to the NAS |
 
-`./data` is a bind mount on the NAS (e.g. `/volume1/docker/bewerbungen/data`), so the database and
+`./data` is a bind mount on the NAS (e.g. `/volume1/docker/family-jobs/data`), so the database and
 all attachments survive updates and are visible in File Station.
 
 The NAS is reachable through the existing Cloudflare Tunnel at e.g. `bewerbungen.<domain>`,
@@ -178,7 +178,7 @@ All under `/api`, JSON, JWT bearer auth unless noted.
 Cloudflare setup (documented in `README_DOCKER.md`):
 
 1. Email Routing enabled on the domain, subaddressing enabled, a custom address
-   `bewerbungen@<domain>` routed to the Worker `bewerbungen-inbound`.
+   `bewerbungen@<domain>` routed to the Worker `family-jobs-inbound`.
 2. The Worker reads `message.raw`, and POSTs it to `APP_URL/api/inbound` with headers
    `CF-Access-Client-Id`, `CF-Access-Client-Secret` and `X-Inbound-Secret` (all Worker secrets),
    plus `X-Envelope-To: message.to`. The envelope recipient matters for BCC: a BCC'd `+tag`
@@ -291,7 +291,7 @@ German UI, mobile-first, React Router.
   - CRUD for applications, events, attachments; file naming, slugging, collision counter
   - derived status and follow-up due logic
   - inbound: tagged mail, untagged mail, mail sent by a user, attachments, duplicate
-    `Message-ID`, broken MIME, wrong secret, oversize body (fixtures in `tests/fixtures/*.eml`)
+    `Message-ID`, broken MIME, wrong secret, oversize body (test mails built by `tests/mails.py`)
   - inbox: suggestion, assign (files moved), create application, dismiss
   - reminders: digest content, empty digest, opt-out, failure and retry (Resend mocked)
   - integration status: not configured, waiting, ok, error for both integrations; app starts
@@ -305,7 +305,7 @@ German UI, mobile-first, React Router.
 Copied from `family-budget-dashboard` and adapted:
 
 - `pr-checks.yml`: backend tests, frontend lint/type-check/build, worker tests.
-- `ci-cd.yml`: on `main`, build and push `ghcr.io/frankandreas/bewerbungs-tracking/backend` and
+- `ci-cd.yml`: on `main`, build and push `ghcr.io/frankandreas/family-job-tracking/backend` and
   `.../frontend` (`latest` + commit SHA).
 - `docker-compose.yml` (installed on the NAS as `compose.yaml`), `.env.example`,
   `scripts/nas-update.sh` (nightly pull + restart), `scripts/deploy-nas.sh`.
