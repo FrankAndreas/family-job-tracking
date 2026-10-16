@@ -169,7 +169,8 @@ All under `/api`, JSON, JWT bearer auth unless noted.
 - `GET /api/emails/{id}`: full e-mail incl. body. `GET /api/emails/{id}/raw`: the `.eml`.
 - `GET/PATCH /api/settings` (patch: admin).
 - `GET /api/integrations`: status of the optional integrations (see "Integration status").
-- `GET /api/export`: ZIP with CSVs of all tables and the `files/` tree.
+- `GET /api/export`: ZIP with a readable `uebersicht.csv` and `zeitleiste.csv`, CSVs of all tables
+  (semicolon, UTF-8 BOM for Excel) and the `files/` tree.
 - `POST /api/inbound` (no JWT; `X-Inbound-Secret` header): raw MIME body.
 - `GET /health` (no auth).
 

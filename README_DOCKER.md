@@ -65,7 +65,10 @@ Everything worth keeping is in `data/`:
 - `files/_posteingang/`: files of e-mails that are not assigned yet
 
 Include `data/` in your Hyper Backup task. **Einstellungen → Daten exportieren** downloads everything
-as a ZIP (CSV files plus the attachments).
+as a ZIP: `uebersicht.csv` (one row per application with status and dates), `zeitleiste.csv` (all
+events with German labels), the raw tables as CSV and the `files/` folder. The CSVs use semicolons and a
+UTF-8 BOM, so Excel opens them directly. The export is an archive, not a restore format: back up
+`data/` for that.
 
 ## Reaching the app from outside (Cloudflare Tunnel and Access)
 

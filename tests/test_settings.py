@@ -1,3 +1,5 @@
+import codecs
+import csv
 import io
 import zipfile
 
@@ -112,3 +114,56 @@ def test_export_zip(client, admin_headers):
     users_csv = archive.read("users.csv").decode()
     assert "Admin" in users_csv
     assert "pin_hash" not in users_csv
+
+
+def read_csv(archive, name):
+    raw = archive.read(name)
+    assert raw.startswith(codecs.BOM_UTF8), f"{name} needs a BOM so Excel reads it as UTF-8"
+    return list(csv.reader(io.StringIO(raw.decode("utf-8-sig")), delimiter=";"))
+
+
+def test_export_is_excel_friendly(client, admin_headers):
+    create_application(client, admin_headers, "Bäckerei Zürich")
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    for name in ("users.csv", "applications.csv", "events.csv", "emails.csv", "attachments.csv"):
+        rows = read_csv(archive, name)
+        assert len(rows[0]) > 1, f"{name} must be split on semicolons"
+    assert any("Bäckerei Zürich" in row for row in read_csv(archive, "applications.csv"))
+
+
+def test_export_overview_one_row_per_application(client, admin_headers):
+    migros = create_application(client, admin_headers, "Migros", position="Lehrstelle Informatiker")
+    add_event(client, admin_headers, migros["id"], "sent", "2026-09-01T10:00:00+02:00")
+    add_event(client, admin_headers, migros["id"], "interview", "2026-09-20T14:30:00+02:00")
+    create_application(client, admin_headers, "Coop")
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    header, *rows = read_csv(archive, "uebersicht.csv")
+    by_company = {row[header.index("Firma")]: dict(zip(header, row)) for row in rows}
+    assert set(by_company) == {"Migros", "Coop"}
+    migros_row = by_company["Migros"]
+    assert migros_row["Stelle"] == "Lehrstelle Informatiker"
+    assert migros_row["Status"] == "In Kontakt"
+    assert migros_row["Beworben am"] == "01.09.2026"
+    assert migros_row["Letztes Ereignis"] == "Vorstellungsgespräch"
+    assert migros_row["Letzter Kontakt"] == "20.09.2026"
+    assert migros_row["Nachfassen ab"] == "30.09.2026"
+    assert migros_row["Ereignisse"] == "2"
+    assert by_company["Coop"]["Status"] == "Entwurf"
+    assert by_company["Coop"]["Beworben am"] == ""
+
+
+def test_export_timeline_readable(client, admin_headers):
+    migros = create_application(client, admin_headers, "Migros")
+    add_event(
+        client, admin_headers, migros["id"], "followed_up", "2026-09-10T09:15:00+02:00", note="Telefonisch",
+        files=[("files", ("brief.pdf", b"x", "application/pdf"))],
+    )
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    header, *rows = read_csv(archive, "zeitleiste.csv")
+    row = dict(zip(header, rows[0]))
+    assert row["Datum"] == "10.09.2026 09:15"
+    assert row["Firma"] == "Migros"
+    assert row["Ereignis"] == "Nachgefragt"
+    assert row["Notiz"] == "Telefonisch"
+    assert row["Erfasst von"] == "Admin"
+    assert row["Anhänge"] == "brief.pdf"
