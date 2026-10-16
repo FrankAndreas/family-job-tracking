@@ -35,3 +35,7 @@ cd cloudflare/email-worker && npm install && npm test
 ```
 
 The design is in `docs/superpowers/specs/2026-10-15-family-job-tracking-design.md`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
