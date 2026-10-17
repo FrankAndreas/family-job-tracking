@@ -19,6 +19,10 @@ export interface InboundMessage {
  * so the sender gets a bounce instead of the mail being lost silently.
  */
 export async function deliver(message: InboundMessage, env: Env, fetchImpl: typeof fetch = fetch): Promise<void> {
+    if (!env.APP_URL) {
+        message.setReject('Family Job Tracking: APP_URL ist im Worker nicht gesetzt');
+        return;
+    }
     const body = await new Response(message.raw).arrayBuffer();
     let response: Response;
     try {

@@ -56,4 +56,12 @@ describe('deliver', () => {
         await deliver(msg, env, failing as unknown as typeof fetch);
         expect(setReject).toHaveBeenCalledWith(expect.stringContaining('nicht erreichbar'));
     });
+
+    it('rejects the mail without calling out when APP_URL is not set', async () => {
+        const fetchMock = vi.fn();
+        const { msg, setReject } = message();
+        await deliver(msg, { ...env, APP_URL: '' }, fetchMock as unknown as typeof fetch);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(setReject).toHaveBeenCalledWith(expect.stringContaining('APP_URL'));
+    });
 });

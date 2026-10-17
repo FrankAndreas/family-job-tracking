@@ -72,14 +72,23 @@ UTF-8 BOM, so Excel opens them directly. The export is an archive, not a restore
 
 ## Reaching the app from outside (Cloudflare Tunnel and Access)
 
-The NAS is already connected to Cloudflare Zero Trust with a tunnel.
+The NAS is already connected to Cloudflare Zero Trust with a tunnel. Cloudflare renames dashboard
+menus from time to time; older names are given in brackets.
 
-1. **Public hostname.** In **Zero Trust → Networks → Tunnels → your tunnel → Public Hostname → Add**:
-   - subdomain `bewerbungen`, your domain
-   - service `HTTP`, URL `<NAS_IP>:8082`
-2. **Access application for people.** In **Zero Trust → Access → Applications → Add → Self-hosted**:
-   - domain `bewerbungen.<domain>`
-   - a policy that allows your family's e-mail addresses
+1. **Route the hostname to the app.** In **Zero Trust → Networks → Connectors → Cloudflare Tunnels**
+   (Networks → Tunnels), open your tunnel, choose **Edit**, then **Published application routes**
+   (Public Hostname) → **Add**:
+   - subdomain `bewerbungen`, your domain, path empty
+   - service type `HTTP`, URL `<NAS_IP>:8082`
+
+   Port 8082 is the frontend container; its nginx passes `/api` on to the backend. Use the NAS's LAN
+   IP if `cloudflared` runs as a container in a bridge network (`localhost` would be the `cloudflared`
+   container itself); `localhost:8082` only works if it runs on the host network. Cloudflare creates
+   the DNS record. A **502 Bad Gateway** means `cloudflared` can't reach the port.
+2. **Access application for people.** In **Access controls → Applications → Create new
+   application** (Access → Applications → Add) choose **Public DNS** (Self-hosted):
+   - subdomain `bewerbungen`, your domain, path empty
+   - a policy with action **Allow** that includes your family's e-mail addresses
 
    The PIN login of the app comes on top of that.
 3. Set `APP_URL=https://bewerbungen.<domain>` in `.env` and restart (`sudo docker-compose up -d`).
@@ -90,41 +99,83 @@ Each application has its own address `bewerbungen+<tag>@<domain>`. A mail sent, 
 forwarded to it lands in that application's timeline, including attachments. Mails to plain
 `bewerbungen@<domain>` land in the **Posteingang**.
 
+`bewerbungen` is only the mailbox name in front of the `@`; mail is received on your main domain.
+Check first that the domain doesn't already receive mail elsewhere:
+
+```bash
+dig +short MX <domain>
+```
+
+No output or only `route*.mx.cloudflare.net` is fine. If another provider is listed (Google,
+Microsoft, Infomaniak, …), enabling Email Routing would take mail away from those mailboxes: use an
+e-mail subdomain instead (**Email Routing → Settings → Subdomains**, e.g. `jobs.<domain>`) and
+replace `<domain>` below with it. Otherwise do **not** add a subdomain there.
+
 1. **Secret for the app.** Add it to `.env`, then restart:
    ```bash
    echo "INBOUND_SECRET=$(openssl rand -hex 32)" | sudo tee -a .env
+   sudo docker-compose up -d
    ```
-2. **Service token for the worker.** In **Zero Trust → Access → Service Auth → Service Tokens →
-   Create**, name it `family-jobs-inbound` and note the Client ID and Client Secret.
-3. **Access application for the worker.** In **Access → Applications → Add → Self-hosted**:
-   - domain `bewerbungen.<domain>`, path `api/inbound`
-   - one policy with action **Service Auth** that includes the service token
+2. **Service token for the worker.** In **Zero Trust → Access controls → Service credentials →
+   Service Tokens → Create Service Token** (Access → Service Auth), name it `family-jobs-inbound`,
+   choose **Non-expiring** and note the Client ID and Client Secret. The secret is shown only once.
+3. **Policy for the token.** In **Access controls → Policies → Add a policy**:
+   - name `family-jobs-inbound-token`
+   - action **Service Auth** (not Allow)
+   - include rule: selector **Service Token**, value `family-jobs-inbound`
+4. **Access application for the worker.** In **Access controls → Applications → Create new
+   application → Public DNS**:
+   - name `family-jobs-inbound`
+   - subdomain `bewerbungen`, your domain, path `api/inbound` (no leading slash, no `*`)
+   - under the policies, **Select existing policies** → `family-jobs-inbound-token`
+   - leave the login methods as they are; optionally turn on **401 Response for Service Auth
+     policies**, so a wrong token gives a 401 instead of a redirect
 
-   The more specific path takes precedence over the application from above. Only the worker can call
-   `/api/inbound`, and the app checks `INBOUND_SECRET` on top of that.
-4. **Deploy the worker** from a checkout of this repository:
+   You now have two applications on the same hostname. The one with the path is more specific and
+   takes precedence for `/api/inbound`; everything else stays behind the one from above. Only the
+   worker gets through to `/api/inbound`, and the app checks `INBOUND_SECRET` on top of that.
+   Check both layers:
+   ```bash
+   # without token: 302 or 401 from Cloudflare
+   curl -s -o /dev/null -w "%{http_code}\n" -X POST https://bewerbungen.<domain>/api/inbound
+   # with token: 401 from the app, because INBOUND_SECRET is missing
+   curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "CF-Access-Client-Id: <id>" \
+     -H "CF-Access-Client-Secret: <secret>" https://bewerbungen.<domain>/api/inbound
+   ```
+   A 302 on the second call means the policy doesn't apply: check its action and token.
+5. **Deploy the worker** from a checkout of this repository. Deploy first, so the worker exists,
+   then set its secrets. Put the values in environment variables first, so they stay out of the
+   shell history:
    ```bash
    cd cloudflare/email-worker
    npm ci
-   # set APP_URL in wrangler.toml to https://bewerbungen.<domain>
    npx wrangler login
-   npx wrangler secret put INBOUND_SECRET            # the value from step 1
-   npx wrangler secret put CF_ACCESS_CLIENT_ID       # from step 2
-   npx wrangler secret put CF_ACCESS_CLIENT_SECRET   # from step 2
    npx wrangler deploy
+   # APP_URL=https://bewerbungen.<domain>, INBOUND_SECRET from step 1,
+   # CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET from step 2
+   for name in APP_URL INBOUND_SECRET CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET; do
+     printf %s "${!name}" | npx wrangler secret put "$name"
+   done
+   npx wrangler secret list    # shows the four names, not the values
    ```
-5. **Route the address to the worker.** In the Cloudflare dashboard, open your domain and go to
-   **Email → Email Routing**:
-   - enable it if it isn't, and let Cloudflare add the MX/SPF records
+   `printf %s` keeps a trailing newline out of the secret. The app URL is a secret too, so
+   `wrangler.toml` holds no personal data. Until all four are set, the worker rejects mails.
+6. **Route the address to the worker.** This is in the regular dashboard
+   (**dash.cloudflare.com**), not in Zero Trust: open your domain, then **Email → Email Routing**:
+   - enable it if it isn't, and let Cloudflare add the MX, SPF and DKIM records. They show as
+     "Locked". Resend is unaffected, as it sends from its own subdomain.
    - in **Settings**, enable **Subaddressing**, so `bewerbungen+tag@` reaches the same rule
    - under **Routing rules → Custom addresses → Create address**, enter `bewerbungen`, set the action
-     to **Send to a Worker** and choose `family-jobs-inbound`
-6. **In the app**, open **Einstellungen**:
-   - set the **Eingangsadresse** to `bewerbungen@<domain>`
+     to **Send to a Worker** and choose `family-jobs-inbound`. The address shown must be
+     `bewerbungen@<domain>`. If the worker isn't in the list, it isn't deployed yet.
+7. **In the app**, open **Einstellungen → App-Einstellungen** (admins only):
+   - set the **Eingangsadresse** to `bewerbungen@<domain>`. This is an app setting, not a `.env`
+     variable.
    - check that the card **Eingehende Mails** says "Wartet"
    - send a test mail to `bewerbungen@<domain>`
 
-   The card turns "OK" and the mail appears in the Posteingang.
+   The card turns "OK" and the mail appears in the Posteingang. Then send one with an attachment to
+   an application's `+tag` address: it lands in that application's timeline.
 
 If the app is unreachable or refuses the mail, the worker rejects it, so the sender gets a bounce and
 nothing is lost silently. Mails the app cannot read are kept as `.eml` in the Posteingang. Delivering
@@ -188,6 +239,8 @@ scripts/deploy-nas.sh
 | Card "Eingehende Mails" is red | the error shown on the card; the mail is still in the Posteingang as `.eml` |
 | Mails bounce with "nicht angenommen (HTTP 302)" | the Access service token or the `api/inbound` Access application |
 | Mails bounce with "HTTP 401" | `INBOUND_SECRET` differs between `.env` and the worker secret |
+| Mails bounce with "APP_URL ist im Worker nicht gesetzt" | the worker secret `APP_URL` (`npx wrangler secret list`) |
+| Mails bounce with "nicht erreichbar" | `APP_URL` in the worker and the tunnel's published application route |
 | Card "Erinnerungen" is red | the Resend error shown on the card (unverified domain, wrong key) |
 | Reminder e-mails have no links | `APP_URL` in `.env` |
 | Everyone is logged out after an update | `SECRET_KEY` is empty in `.env` |
