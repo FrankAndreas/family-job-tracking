@@ -12,7 +12,7 @@ services:
   backend:
     image: ghcr.io/frankandreas/family-job-tracking/backend:latest
     build: ./backend
-    container_name: jobs-backend
+    container_name: ${CONTAINER_PREFIX:-jobs}-backend
     user: "${PUID:-999}:${PGID:-999}"
     volumes:
       - ./data:/app/data          # jobs.db and files/ (attachments, raw e-mails)
@@ -42,7 +42,7 @@ services:
   frontend:
     image: ghcr.io/frankandreas/family-job-tracking/frontend:latest
     build: ./frontend
-    container_name: jobs-frontend
+    container_name: ${CONTAINER_PREFIX:-jobs}-frontend
     ports:
       - "${PORT:-8082}:8080"
     depends_on:

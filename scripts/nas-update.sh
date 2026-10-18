@@ -73,13 +73,16 @@ fi
 # Container Manager UI isn't duplicated under the folder name
 if [ -z "${COMPOSE_PROJECT_NAME:-}" ]; then
     backend_id=$("${COMPOSE[@]}" ps -q backend 2>/dev/null | head -n1)
-    [ -z "$backend_id" ] && backend_id=$(docker ps -aq --filter name='^jobs-backend$' | head -n1)
+    # The container name comes from CONTAINER_PREFIX in .env (a second instance uses its own)
+    prefix=$(sed -n 's/^CONTAINER_PREFIX=//p' .env 2>/dev/null | tail -n1 | tr -d "\"' \r")
+    backend_name="${prefix:-jobs}-backend"
+    [ -z "$backend_id" ] && backend_id=$(docker ps -aq --filter name="^${backend_name}\$" | head -n1)
     if [ -n "$backend_id" ]; then
         project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$backend_id" 2>/dev/null)
         workdir=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$backend_id" 2>/dev/null)
         # Never take over a stack that was started from another folder
         if [ -n "$workdir" ] && [ "$(cd "$workdir" 2>/dev/null && pwd -P)" != "$(pwd -P)" ]; then
-            fail "jobs-backend belongs to the stack in $workdir, not $APP_DIR; run the script from that folder or set COMPOSE_PROJECT_NAME"
+            fail "$backend_name belongs to the stack in $workdir, not $APP_DIR; run the script from that folder or set COMPOSE_PROJECT_NAME"
         fi
         [ -n "$project" ] && export COMPOSE_PROJECT_NAME="$project"
     fi

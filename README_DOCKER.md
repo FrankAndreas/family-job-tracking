@@ -8,7 +8,8 @@ The app runs as two containers from images on GitHub Container Registry (GHCR):
   8080 inside the container, forwarding `/api` to the backend
 
 It is set up like family-budget-dashboard and family-chore, so all three run side by side
-(family-chore on 8080, family-budget on 8081, this app on **8082**).
+(family-chore on 8080, family-budget on 8081, this app on **8082**). A second, fully separate
+instance, e.g. for a parent's own applications, can run next to it on 8083 (see the section at the end).
 
 Two integrations are optional and can be added later; the app runs fine without them:
 
@@ -256,6 +257,62 @@ To deploy right away from your computer:
 cp .deploy.env.example .deploy.env   # once; then set NAS_HOST and NAS_DIR
 scripts/deploy-nas.sh
 ```
+
+## A second, separate instance
+
+To track applications that only one person may see, e.g. a parent's own job search, run the app a
+second time. The two instances share nothing: separate folder, database, files, users, URL and
+inbound address, so nobody in one instance can see the other's data. The images and the code are
+the same. The examples use the suffix `papa`; pick your own.
+
+| | First instance | Second instance |
+|---|---|---|
+| NAS folder | `/volume1/docker/family-jobs` | `/volume1/docker/family-jobs-papa` |
+| `.env`: `PORT` / `CONTAINER_PREFIX` | `8082` / `jobs` | `8083` / `jobs-papa` |
+| Containers | `jobs-backend`, `jobs-frontend` | `jobs-papa-backend`, `jobs-papa-frontend` |
+| Hostname | `bewerbungen.<domain>` | `bewerbungen-papa.<domain>` |
+| Inbound address | `bewerbungen@<domain>` | `bewerbungen-papa@<domain>` |
+| Email Worker | `family-jobs-inbound` | `family-jobs-inbound-papa` |
+
+1. **Install it** as in [Installation](#installation), with the second folder. Use a new
+   `SECRET_KEY` and `INBOUND_SECRET`, and add to its `.env`:
+   ```
+   PORT=8083
+   CONTAINER_PREFIX=jobs-papa
+   APP_URL=https://bewerbungen-papa.<domain>
+   ```
+   `RESEND_API_KEY` and `MAIL_FROM` can be the same as in the first instance. In the Container
+   Manager, give the project its own name (e.g. `family-jobs-papa`). The first login uses its own
+   initial PIN: `sudo docker logs jobs-papa-backend 2>&1 | grep "INITIAL PIN"`.
+2. **Tunnel route:** add a second published application route `bewerbungen-papa` → `HTTP`,
+   `<NAS_IP>:8083`.
+3. **Access application for people:** a new application for `bewerbungen-papa.<domain>` whose
+   policy allows **only your own** e-mail address. Don't add the hostname to the family application,
+   or everyone in the family gets past Cloudflare Access (the PIN would still be needed).
+4. **Access for the worker:** open the existing application `family-jobs-inbound` and add a second
+   public hostname: `bewerbungen-papa`, your domain, path `api/inbound`. The same service token
+   and policy then cover both instances.
+5. **Deploy the worker a second time** under its own name. `--name` overrides the name in
+   `wrangler.toml`, for the deployment and for each secret:
+   ```bash
+   cd cloudflare/email-worker
+   npx wrangler deploy --name family-jobs-inbound-papa
+   # APP_URL=https://bewerbungen-papa.<domain>, INBOUND_SECRET of the second instance,
+   # CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET as for the first worker
+   for name in APP_URL INBOUND_SECRET CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET FALLBACK_ADDRESS; do
+     printf %s "${!name}" | npx wrangler secret put "$name" --name family-jobs-inbound-papa
+   done
+   ```
+   Drop `FALLBACK_ADDRESS` from the list if you don't use one. Later updates of the worker code
+   need both deployments: `npx wrangler deploy` and
+   `npx wrangler deploy --name family-jobs-inbound-papa`.
+6. **Email Routing:** create the custom address `bewerbungen-papa` → **Send to a Worker** →
+   `family-jobs-inbound-papa`. Subaddressing is already on, so `bewerbungen-papa+<tag>@` works too.
+7. **In the second app:** set the **Eingangsadresse** to `bewerbungen-papa@<domain>` and send a test
+   mail.
+8. **Updates and backups:** copy `nas-update.sh` into the second folder too and schedule it as a
+   second task (it reads `CONTAINER_PREFIX` from that folder's `.env`). Add the second `data/`
+   folder to Hyper Backup.
 
 ## Troubleshooting
 
