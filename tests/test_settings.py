@@ -187,3 +187,12 @@ def test_export_suggestions(client, admin_headers):
     assert row["Grund"] == "zu früh"
     raw_header, *_ = read_csv(archive, "suggestions.csv")
     assert "url_key" in raw_header
+
+
+def test_inbound_warns_about_users_without_an_address(client, admin_headers, monkeypatch):
+    monkeypatch.setenv("INBOUND_SECRET", INBOUND_SECRET)
+    create_user(client, admin_headers, "Sohn")
+    create_user(client, admin_headers, "Mama", pin="6789", email="mama@example.ch")
+    warnings = integrations(client, admin_headers)["inbound"]["warnings"]
+    assert any("Admin, Sohn" in w for w in warnings)
+    assert not any("Mama" in w for w in warnings)

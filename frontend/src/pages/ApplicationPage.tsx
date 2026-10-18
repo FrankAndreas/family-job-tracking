@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
+import { useAuth } from '../AuthContext';
 import ApplicationForm from '../components/ApplicationForm';
 import EventForm from '../components/EventForm';
 import StatusBadge from '../components/StatusBadge';
@@ -28,6 +29,7 @@ export default function ApplicationPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const toast = useToast();
+    const { user } = useAuth();
     const [application, setApplication] = useState<ApplicationDetail | null>(null);
     const [editing, setEditing] = useState(false);
 
@@ -107,6 +109,14 @@ export default function ApplicationPage() {
                     <button type="button" onClick={copyAddress} className="ml-auto text-blue-300 hover:underline">
                         Kopieren
                     </button>
+                    {user && !user.email && (
+                        <p className="w-full text-amber-300">
+                            Deine E-Mail-Adresse fehlt: Mails von dir zählen sonst als erhalten statt gesendet.{' '}
+                            <Link to="/einstellungen" className="underline">
+                                Unter Mein Konto speichern
+                            </Link>
+                        </p>
+                    )}
                 </div>
             ) : (
                 <p className="text-sm text-slate-500">

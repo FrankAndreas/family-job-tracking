@@ -203,8 +203,11 @@ Backend processing of `POST /api/inbound`:
 4. Store the raw `.eml`, the text body (plain part, else HTML converted to text) and all
    attachments using the file naming rules above.
 5. With a matching tag: link the e-mail to the application and create an event at the e-mail's
-   `Date`: `mail_sent` if the sender address belongs to a user (`users.email`), else
-   `mail_received`. The event note is the subject. Without a tag, the same happens if exactly one
+   `Date`: if the sender address belongs to a user (`users.email`), `sent` when the application has
+   no `sent` event yet (the application mail with the app in BCC), else `mail_sent`; otherwise
+   `mail_received`, or `reply_received` for a forwarded mail. A mail a user forwards (subject
+   starting with `WG:`/`Fw:`/`Fwd:`) is stored under the original sender named in its text
+   ("Von:"/"From:" line), unless that is a user too, and counts as `reply_received`. The event note is the subject. Without a tag, the same happens if exactly one
    active application fits the sender's domain (see the inbox suggestion below) and the sender is
    not a user; otherwise the e-mail goes to the inbox.
 6. If parsing fails, store the raw `.eml` anyway in `_posteingang`, create an inbox entry with

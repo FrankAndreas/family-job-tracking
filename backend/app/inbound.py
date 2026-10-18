@@ -1,4 +1,5 @@
 import logging
+import re
 
 from sqlalchemy.orm import Session
 
@@ -37,13 +38,43 @@ def _user_addresses(db: Session) -> set[str]:
     return {u.email for u in db.query(models.User).filter(models.User.email.isnot(None))}
 
 
+_FORWARD_SUBJECT = re.compile(r"^\s*(wg|fwd?)\s*:", re.IGNORECASE)
+# The header block a mail client puts above a forwarded mail: "Von: Personal <hr@migros.ch>"
+_FORWARDED_FROM = re.compile(r"^[\s>*]*(?:von|from)\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_ADDRESS = re.compile(r"[\w.+'-]+@[\w-]+(?:\.[\w-]+)+")
+
+
+def is_forward(subject: str) -> bool:
+    return bool(_FORWARD_SUBJECT.match(subject))
+
+
+def forwarded_sender(body: str) -> str | None:
+    """The original sender named in a forwarded mail's text, if there is one."""
+    for line in _FORWARDED_FROM.finditer(body):
+        bracketed = re.search(r"<([^<>@\s]+@[^<>\s]+)>", line.group(1))
+        if bracketed:
+            return bracketed.group(1).lower()
+        plain = _ADDRESS.search(line.group(1))
+        if plain:
+            return plain.group(0).lower()
+    return None
+
+
 def create_mail_event(
     db: Session, email: models.Email, application: models.Application, event_type: models.EventType | None = None
 ) -> models.Event:
-    """Add the e-mail to the application's timeline: "Mail gesendet" if one of us sent it, else "Mail erhalten"."""
+    """Add the e-mail to the application's timeline.
+
+    One of us sent it: "Bewerbung gesendet" if the application has none yet (the application mail with the app
+    in BCC), else "Mail gesendet". From someone else: "Antwort erhalten" if forwarded, else "Mail erhalten"."""
     if event_type is None:
-        own = email.from_addr in _user_addresses(db)
-        event_type = models.EventType.MAIL_SENT if own else models.EventType.MAIL_RECEIVED
+        if email.from_addr in _user_addresses(db):
+            first = not any(e.type == models.EventType.SENT.value for e in application.events)
+            event_type = models.EventType.SENT if first else models.EventType.MAIL_SENT
+        elif is_forward(email.subject):
+            event_type = models.EventType.REPLY_RECEIVED
+        else:
+            event_type = models.EventType.MAIL_RECEIVED
     event = models.Event(
         application_id=application.id,
         occurred_at=email.received_at,
@@ -96,30 +127,40 @@ def process(
             return created
         # From someone else, or without a link: keep it like any untagged mail
 
+    # A reply one of us forwarded: file it under the company that wrote it
+    sender = mail.from_addr
+    event_type = None
+    own = _user_addresses(db)
+    if sender in own and is_forward(mail.subject):
+        original = forwarded_sender(mail.body_text)
+        if original is None or original not in own:
+            sender = original or sender
+            event_type = models.EventType.REPLY_RECEIVED
+
     known_tags = {tag for (tag,) in db.query(models.Application.mail_tag)}
     tag = mailparse.find_tag(mail.recipients, known_tags)
     if tag:
         application = db.query(models.Application).filter_by(mail_tag=tag).one()
     else:
-        application = _auto_match(db, mail.from_addr)
+        application = _auto_match(db, sender)
 
     received = mail.date or now
     day = local_date(received)
     email = models.Email(
         message_id=mail.message_id,
-        from_addr=mail.from_addr,
+        from_addr=sender,
         to_addrs=", ".join(mail.to_addrs),
         subject=mail.subject,
         body_text=mail.body_text,
         received_at=received,
-        raw_path=_save(application, mail.from_addr, day, _raw_name(mail.subject), raw),
+        raw_path=_save(application, sender, day, _raw_name(mail.subject), raw),
         application_id=application.id if application else None,
     )
     for attachment in mail.attachments:
         email.attachments.append(
             models.Attachment(
                 filename=attachment.filename,
-                path=_save(application, mail.from_addr, day, attachment.filename, attachment.content),
+                path=_save(application, sender, day, attachment.filename, attachment.content),
                 content_type=attachment.content_type,
                 size=len(attachment.content),
             )
@@ -127,7 +168,7 @@ def process(
     db.add(email)
     db.flush()
     if application is not None:
-        create_mail_event(db, email, application)
+        create_mail_event(db, email, application, event_type)
     db.commit()
     return email
 

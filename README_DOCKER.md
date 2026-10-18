@@ -206,7 +206,12 @@ If the app is unreachable or refuses the mail, the worker rejects it, so the sen
 nothing is lost silently. Mails the app cannot read are kept as `.eml` in the Posteingang. Delivering
 the same mail twice is detected by its Message-ID.
 
-**Mails from you count as "Mail gesendet":** save your own address under **Einstellungen → Mein Konto**.
+**Mails from you count as sent:** save your own address under **Einstellungen → Mein Konto** (the card
+**Eingehende Mails** warns about users without one). Your first mail to an application, i.e. the
+application itself with its address in BCC, becomes "Bewerbung gesendet", so the status turns "Offen"
+and the follow-up reminder starts; later ones become "Mail gesendet". A company's reply that you
+forward (subject starting with `WG:`, `Fw:` or `Fwd:`) becomes "Antwort erhalten", filed under the
+sender named in the forwarded text, so it also finds its application by that sender's domain.
 
 **Catching replies that go to a private mailbox.** Companies usually answer the address the
 application was sent from, not the `+tag` address. Let that mailbox forward them automatically: in

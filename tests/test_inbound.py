@@ -66,11 +66,79 @@ def test_bcc_uses_envelope_recipient(client, admin_headers):
     assert response.json()["application_id"] == app["id"]
 
 
-def test_mail_from_a_user_is_mail_sent(client, admin_headers):
+def events_of(client, headers, application_id):
+    """Event types, oldest first."""
+    return [e["type"] for e in reversed(detail(client, headers, application_id)["events"])]
+
+
+def test_first_mail_from_a_user_is_the_application(client, admin_headers):
+    # BCC'ing the app on the application mail must count as "Bewerbung gesendet", so the status
+    # becomes "Offen" and the follow-up reminder can start
     create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
     app = create_application(client, admin_headers, "Migros")
     post_mail(client, build_mail(sender="Sohn <Sohn@Example.ch>", to="hr@migros.ch", cc=tagged(app)))
-    assert [e["type"] for e in detail(client, admin_headers, app["id"])["events"]] == ["mail_sent"]
+    assert events_of(client, admin_headers, app["id"]) == ["sent"]
+    assert detail(client, admin_headers, app["id"])["status"] == "open"
+
+
+def test_later_mails_from_a_user_are_mail_sent(client, admin_headers):
+    create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
+    app = create_application(client, admin_headers, "Migros")
+    first = build_mail(sender="sohn@example.ch", to="hr@migros.ch", cc=tagged(app), message_id="<a@x>",
+                       date="Thu, 01 Oct 2026 09:00:00 +0200")
+    second = build_mail(sender="sohn@example.ch", to="hr@migros.ch", cc=tagged(app), message_id="<b@x>",
+                        date="Thu, 15 Oct 2026 09:00:00 +0200")
+    post_mail(client, first)
+    post_mail(client, second)
+    assert events_of(client, admin_headers, app["id"]) == ["sent", "mail_sent"]
+
+
+FORWARDED_BODY = """Hier die Antwort.
+
+---------- Forwarded message ---------
+Von: Personal Migros <HR@migros.ch>
+Date: Mi., 14. Okt. 2026
+Subject: Ihre Bewerbung
+
+Gerne laden wir Sie ein ...
+"""
+
+
+def test_reply_forwarded_by_a_user_counts_as_reply_from_the_company(client, admin_headers, db):
+    create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
+    app = create_application(client, admin_headers, "Migros")
+    raw = build_mail(sender="sohn@example.ch", to=tagged(app), subject="WG: Ihre Bewerbung", body=FORWARDED_BODY)
+    post_mail(client, raw)
+    assert events_of(client, admin_headers, app["id"]) == ["reply_received"]
+    assert db.query(models.Email).one().from_addr == "hr@migros.ch"
+    assert detail(client, admin_headers, app["id"])["status"] == "in_contact"
+
+
+def test_forwarded_reply_without_a_readable_sender_is_still_a_reply(client, admin_headers, db):
+    create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
+    app = create_application(client, admin_headers, "Migros")
+    raw = build_mail(sender="sohn@example.ch", to=tagged(app), subject="Fwd: Einladung", body="siehe unten")
+    post_mail(client, raw)
+    assert events_of(client, admin_headers, app["id"]) == ["reply_received"]
+    assert db.query(models.Email).one().from_addr == "sohn@example.ch"
+
+
+def test_forwarded_own_application_counts_as_sent(client, admin_headers):
+    # Forgot the BCC and forwarded the sent application afterwards
+    create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
+    app = create_application(client, admin_headers, "Migros")
+    body = "Von: Sohn <sohn@example.ch>\nAn: hr@migros.ch\nBetreff: Bewerbung\n\nSehr geehrte Damen und Herren"
+    post_mail(client, build_mail(sender="sohn@example.ch", to=tagged(app), subject="WG: Bewerbung", body=body))
+    assert events_of(client, admin_headers, app["id"]) == ["sent"]
+
+
+def test_forwarded_untagged_reply_is_assigned_by_the_companys_domain(client, admin_headers):
+    create_user(client, admin_headers, "Sohn", email="sohn@example.ch")
+    app = create_application(client, admin_headers, "Migros", contact_email="jobs@migros.ch")
+    raw = build_mail(sender="sohn@example.ch", to="bewerbungen@example.ch", subject="WG: Ihre Bewerbung",
+                     body=FORWARDED_BODY)
+    assert post_mail(client, raw).json()["application_id"] == app["id"]
+    assert events_of(client, admin_headers, app["id"]) == ["reply_received"]
 
 
 def test_untagged_mail_goes_to_inbox(client, admin_headers, db):

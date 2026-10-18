@@ -7,7 +7,7 @@ from .settings_store import get_settings
 from .timeutil import iso
 
 
-def _inbound(settings: models.Settings) -> dict:
+def _inbound(db: Session, settings: models.Settings) -> dict:
     if not config.env("INBOUND_SECRET"):
         state = "not_configured"
     elif settings.last_inbound_error:
@@ -19,6 +19,13 @@ def _inbound(settings: models.Settings) -> dict:
     warnings = []
     if not settings.inbound_address:
         warnings.append("Die Eingangsadresse ist in den Einstellungen nicht gesetzt.")
+    users_without = db.query(models.User.name).filter(models.User.email.is_(None)).order_by(models.User.name)
+    without = [name for (name,) in users_without]
+    if without:
+        warnings.append(
+            f"Ohne E-Mail-Adresse: {', '.join(without)}. Ihre Mails an die App zählen als erhalten statt gesendet "
+            "(unter Einstellungen → Mein Konto speichern)."
+        )
     return {
         "state": state,
         "details": {
@@ -60,4 +67,4 @@ def _reminders(db: Session, settings: models.Settings, now: datetime) -> dict:
 
 def status(db: Session, now: datetime) -> dict:
     settings = get_settings(db)
-    return {"inbound": _inbound(settings), "reminders": _reminders(db, settings, now)}
+    return {"inbound": _inbound(db, settings), "reminders": _reminders(db, settings, now)}
