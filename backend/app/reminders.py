@@ -5,15 +5,15 @@ import logging
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from dataclasses import dataclass, field
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session, selectinload
 
-from . import config, database, models
+from . import config, database, models, suggestions
 from . import status as st
 from .settings_store import get_settings
-from .timeutil import to_local, to_utc, utcnow
+from .timeutil import local_date, to_local, to_utc, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +60,43 @@ class DueItem:
 
 
 @dataclass
+class SuggestionItem:
+    id: int
+    label: str
+    deadline: date | None
+
+
+@dataclass
 class Digest:
     due: list[DueItem]
     inbox_count: int
+    new_suggestions: list[SuggestionItem] = field(default_factory=list)
+    deadline_soon: list[SuggestionItem] = field(default_factory=list)
 
     @property
     def empty(self) -> bool:
-        return not self.due and self.inbox_count == 0
+        return not self.due and self.inbox_count == 0 and not self.new_suggestions and not self.deadline_soon
+
+
+SOON_DAYS = 7
+
+
+def _suggestion_lists(db: Session, since: datetime | None, today: date) -> tuple[list, list]:
+    """Open suggestions created after the last reminder, and older ones whose deadline is within SOON_DAYS."""
+    new, soon = [], []
+    open_ones = (
+        db.query(models.Suggestion)
+        .filter(models.Suggestion.status == models.SuggestionStatus.OPEN.value)
+        .order_by(models.Suggestion.created_at, models.Suggestion.id)
+    )
+    for s in open_ones:
+        item = SuggestionItem(s.id, suggestions.label(s), s.deadline)
+        if since is None or s.created_at > since:
+            new.append(item)
+        elif s.deadline and today <= s.deadline <= today + timedelta(days=SOON_DAYS):
+            soon.append(item)
+    soon.sort(key=lambda item: item.deadline)
+    return new, soon
 
 
 def build_digest(db: Session, now: datetime) -> Digest:
@@ -91,7 +121,8 @@ def build_digest(db: Session, now: datetime) -> Digest:
         .filter(models.Email.application_id.is_(None), models.Email.dismissed.is_(False))
         .count()
     )
-    return Digest(due, inbox_count)
+    new, soon = _suggestion_lists(db, settings.last_reminder_sent_at, local_date(now))
+    return Digest(due, inbox_count, new, soon)
 
 
 def _plural(count: int, one: str, many: str) -> str:
@@ -106,8 +137,13 @@ def render(digest: Digest, app_url: str) -> tuple[str, str, str]:
         return f"{base}{path}" if base else ""
 
     due_count = len(digest.due)
+    new_count = len(digest.new_suggestions)
     if due_count:
         subject = f"Bewerbungen: {due_count} {_plural(due_count, 'Nachfrage', 'Nachfragen')} fällig"
+    elif digest.deadline_soon:
+        subject = "Bewerbungen: Frist läuft ab"
+    elif new_count:
+        subject = f"Bewerbungen: {new_count} {_plural(new_count, 'neuer Vorschlag', 'neue Vorschläge')}"
     elif digest.inbox_count:
         subject = f"Bewerbungen: {digest.inbox_count} {_plural(digest.inbox_count, 'Mail', 'Mails')} im Posteingang"
     else:
@@ -130,6 +166,24 @@ def render(digest: Digest, app_url: str) -> tuple[str, str, str]:
                 html_parts.append(f"<li>{label} ({age})</li>")
         text_lines.append("")
         html_parts.append("</ul>")
+    if digest.new_suggestions or digest.deadline_soon:
+        text_lines.append("Vorschläge:")
+        html_parts.append("<h2>Vorschläge</h2>")
+        for heading, items in (("Frist läuft bald ab", digest.deadline_soon), ("Neu", digest.new_suggestions)):
+            if not items:
+                continue
+            text_lines.append(f"{heading}:")
+            html_parts.append(f"<p>{heading}:</p><ul>")
+            for item in items:
+                deadline = f" (Frist {item.deadline.strftime('%d.%m.%Y')})" if item.deadline else ""
+                text_lines.append(f"- {item.label}{deadline}")
+                html_parts.append(f"<li>{html.escape(item.label)}{deadline}</li>")
+            html_parts.append("</ul>")
+        url = link("/vorschlaege")
+        if url:
+            text_lines.append(f"Zu den Vorschlägen: {url}")
+            html_parts.append(f'<p><a href="{html.escape(url)}">Zu den Vorschlägen</a></p>')
+        text_lines.append("")
     if digest.inbox_count:
         message = (
             f"{digest.inbox_count} {_plural(digest.inbox_count, 'Mail wartet', 'Mails warten')} "

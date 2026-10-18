@@ -1,9 +1,9 @@
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
-from app import models, reminders
+from app import models, reminders, suggestions
 from app.settings_store import get_settings
 from app.timeutil import to_utc
 
@@ -170,3 +170,61 @@ def test_resend_send_posts_json(monkeypatch, configured):
         "text": "Text",
         "html": "<p>Text</p>",
     }
+
+
+def add_suggestion(db, url, created_at, deadline=None, status="open", company=""):
+    db.add(
+        models.Suggestion(
+            url=url, url_key=suggestions.normalize_url(url), created_at=created_at, deadline=deadline,
+            status=status, company=company,
+        )
+    )
+    db.commit()
+
+
+def test_digest_lists_new_and_soon_due_suggestions(db):
+    settings = get_settings(db)
+    settings.last_reminder_sent_at = AFTER - timedelta(days=1)
+    db.commit()
+    add_suggestion(db, "https://jobs.ch/new", AFTER - timedelta(hours=2), company="Neu AG")
+    add_suggestion(db, "https://jobs.ch/old-soon", AFTER - timedelta(days=5), deadline=date(2026, 10, 20))
+    add_suggestion(db, "https://jobs.ch/old-later", AFTER - timedelta(days=5), deadline=date(2026, 10, 30))
+    add_suggestion(db, "https://jobs.ch/old-passed", AFTER - timedelta(days=5), deadline=date(2026, 10, 14))
+    add_suggestion(db, "https://jobs.ch/declined", AFTER - timedelta(hours=2), status="declined")
+    digest = reminders.build_digest(db, AFTER)
+    assert [s.label for s in digest.new_suggestions] == ["Neu AG"]
+    assert [s.label for s in digest.deadline_soon] == ["jobs.ch"]
+    assert digest.deadline_soon[0].deadline == date(2026, 10, 20)
+    assert not digest.empty
+
+
+def test_all_open_suggestions_are_new_before_the_first_reminder(db):
+    add_suggestion(db, "https://jobs.ch/a", AFTER - timedelta(days=30))
+    assert len(reminders.build_digest(db, AFTER).new_suggestions) == 1
+
+
+def test_old_suggestions_without_near_deadline_send_nothing(db):
+    settings = get_settings(db)
+    settings.last_reminder_sent_at = AFTER - timedelta(days=1)
+    db.commit()
+    add_suggestion(db, "https://jobs.ch/a", AFTER - timedelta(days=5))
+    assert reminders.build_digest(db, AFTER).empty
+
+
+def test_render_suggestions_and_subject_priority():
+    soon = reminders.SuggestionItem(1, "Migros – Koch", date(2026, 10, 20))
+    new = reminders.SuggestionItem(2, "jobs.ch", None)
+    subject, text, html_body = reminders.render(
+        reminders.Digest(due=[], inbox_count=1, new_suggestions=[new], deadline_soon=[soon]), "https://app.example.ch"
+    )
+    assert subject == "Bewerbungen: Frist läuft ab"
+    assert "Migros – Koch (Frist 20.10.2026)" in text
+    assert "jobs.ch" in text
+    assert "https://app.example.ch/vorschlaege" in text
+    assert "Vorschläge" in html_body
+    subject, _text, _html = reminders.render(
+        reminders.Digest(due=[], inbox_count=1, new_suggestions=[new, new]), ""
+    )
+    assert subject == "Bewerbungen: 2 neue Vorschläge"
+    subject, _text, _html = reminders.render(reminders.Digest(due=[], inbox_count=0, new_suggestions=[new]), "")
+    assert subject == "Bewerbungen: 1 neuer Vorschlag"
