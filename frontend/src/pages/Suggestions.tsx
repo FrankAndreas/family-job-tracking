@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import SuggestionCard from '../components/SuggestionCard';
@@ -37,6 +37,8 @@ export default function Suggestions() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [check, setCheck] = useState<SuggestionCheck | null>(null);
     const [checkedUrl, setCheckedUrl] = useState('');
+    // The link the running check is for; an answer for any other link (edited, saved, reset) is dropped
+    const pendingUrl = useRef('');
     const [saving, setSaving] = useState(false);
     const [showDone, setShowDone] = useState(false);
     const [now] = useState(() => Date.now());
@@ -61,22 +63,31 @@ export default function Suggestions() {
 
     const set = (key: keyof SuggestionFormValues) => (value: string) => setValues((v) => ({ ...v, [key]: value }));
 
-    const checkUrl = async () => {
-        const url = withScheme(values.url);
+    const checkUrl = async (raw: string) => {
+        const url = withScheme(raw);
         if (!url || url === checkedUrl || editingId !== null) return;
         setCheckedUrl(url);
         setValues((v) => ({ ...v, url }));
+        pendingUrl.current = url;
         try {
             const response = await api.post<SuggestionCheck>('/api/suggestions/check', { url });
+            if (pendingUrl.current !== url) return;
             setCheck(response.data);
             const title = response.data.title;
-            if (title) setValues((v) => (v.position ? v : { ...v, position: title }));
+            if (title) setValues((v) => (v.position || v.url !== url ? v : { ...v, position: title }));
         } catch {
-            setCheck(null);
+            if (pendingUrl.current === url) setCheck(null);
         }
     };
 
+    const changeUrl = (value: string) => {
+        pendingUrl.current = '';
+        setCheck(null);
+        set('url')(value);
+    };
+
     const reset = () => {
+        pendingUrl.current = '';
         setValues(EMPTY);
         setEditingId(null);
         setCheck(null);
@@ -134,8 +145,13 @@ export default function Suggestions() {
                         inputMode="url"
                         required
                         value={values.url}
-                        onChange={(e) => set('url')(e.target.value)}
-                        onBlur={checkUrl}
+                        onChange={(e) => changeUrl(e.target.value)}
+                        onBlur={(e) => checkUrl(e.target.value)}
+                        onPaste={(e) => {
+                            const input = e.currentTarget;
+                            // The pasted text is in the field only after the event
+                            setTimeout(() => checkUrl(input.value));
+                        }}
                         placeholder="https://www.yousty.ch/…"
                         className={INPUT}
                     />
