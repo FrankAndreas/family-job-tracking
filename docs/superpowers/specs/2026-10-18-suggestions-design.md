@@ -24,8 +24,8 @@ New table `suggestions` (created by `create_all`; no change to existing tables):
 | Column | Type | Notes |
 |---|---|---|
 | `id` | integer PK | |
-| `url` | string(1000), required | as entered |
-| `url_key` | string(1000), indexed | normalised URL for duplicate checks (see below) |
+| `url` | string(500), required | as entered, like `applications.posting_url` |
+| `url_key` | string(500), indexed | normalised URL for duplicate checks (see below) |
 | `company` | string(200), default "" | |
 | `position` | string(200), default "" | |
 | `location` | string(200), default "" | |
@@ -88,7 +88,8 @@ deliver it; `vorschlag` can never be an application's tag (tags use an alphabet 
 
 In `inbound.process`, before the tag lookup: if a recipient's tag is `vorschlag`
 
-- and the sender is a user's address: every `http(s)` URL in the text body becomes a suggestion
+- and the sender is a user's address: every `http(s)` URL in the text body, and every `href` of the
+  HTML part (shared links often come as HTML only), becomes a suggestion
   (`source = mail`, `created_by` = that user), in order, at most 10, skipping duplicates (existing
   `url_key`s and repeats within the mail). With exactly one new link, the mail's subject (without
   `Fwd:`/`WG:`/`Fw:` prefixes) becomes the `position`. The mail itself is not stored. Response
