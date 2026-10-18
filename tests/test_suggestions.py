@@ -249,3 +249,17 @@ def test_other_suggestion_mails_land_in_the_inbox(client, admin_headers, inbound
     assert response.json()["application_id"] is None
     assert db.query(models.Suggestion).count() == 0
     assert db.query(models.Email).count() == 1
+
+
+HTML_WITH_UNKNOWN_CHARSET = (
+    b"From: hr@migros.ch\r\nTo: bewerbungen@example.ch\r\nSubject: Einladung\r\nMessage-ID: <odd@migros.ch>\r\n"
+    b"MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=b\r\n\r\n"
+    b"--b\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nGuten Tag\r\n"
+    b"--b\r\nContent-Type: text/html; charset=x-bogus\r\n\r\n<p>Guten Tag</p>\r\n--b--\r\n"
+)
+
+
+def test_odd_html_charset_does_not_make_an_ordinary_mail_unreadable(client, inbound, db):
+    assert post_mail(client, HTML_WITH_UNKNOWN_CHARSET).json()["status"] == "stored"
+    email = db.query(models.Email).one()
+    assert (email.subject, email.parse_error) == ("Einladung", None)

@@ -103,13 +103,17 @@ class _LinkCollector(HTMLParser):
 
 
 def _html_links(msg: EmailMessage) -> list[str]:
-    part = msg.get_body(preferencelist=("html",))
-    if part is None:
+    """Only needed for suggestion mails, so an HTML part we can't decode never makes the mail unreadable."""
+    try:
+        part = msg.get_body(preferencelist=("html",))
+        if part is None:
+            return []
+        collector = _LinkCollector()
+        collector.feed(part.get_content())
+        collector.close()
+        return collector.links
+    except Exception:
         return []
-    collector = _LinkCollector()
-    collector.feed(part.get_content())
-    collector.close()
-    return collector.links
 
 
 def _addresses(msg: EmailMessage, *headers: str) -> list[str]:
