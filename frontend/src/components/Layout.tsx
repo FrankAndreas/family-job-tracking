@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../AuthContext';
-import type { Dashboard, Integrations } from '../types';
+import type { Dashboard, Integrations, LayoutContext } from '../types';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`;
@@ -61,7 +61,7 @@ export default function Layout() {
                 </div>
             </header>
             <main className="mx-auto max-w-4xl px-4 py-6">
-                <Outlet />
+                <Outlet context={{ setInboxCount } satisfies LayoutContext} />
             </main>
         </div>
     );

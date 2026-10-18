@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import api, { downloadFile, errorMessage } from '../api';
 import { EVENT_LABELS, formatDateTime, formatSize } from '../labels';
 import { useToast } from '../ToastContext';
-import type { ApplicationSummary, EventType, InboxItem } from '../types';
+import type { ApplicationSummary, EventType, InboxItem, LayoutContext } from '../types';
 import { BUTTON, BUTTON_SECONDARY, CARD, FIELD } from '../ui';
 
 const MAIL_EVENT_TYPES: EventType[] = [
@@ -190,6 +190,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
 
 export default function Inbox() {
     const toast = useToast();
+    const { setInboxCount } = useOutletContext<LayoutContext>();
     const [items, setItems] = useState<InboxItem[] | null>(null);
     const [applications, setApplications] = useState<ApplicationSummary[]>([]);
 
@@ -201,10 +202,12 @@ export default function Inbox() {
         Promise.all([api.get<InboxItem[]>('/api/inbox'), api.get<ApplicationSummary[]>('/api/applications')])
             .then(([inbox, apps]) => {
                 setItems(inbox.data);
+                // Keep the navigation badge in step after assigning or dismissing a mail
+                setInboxCount(inbox.data.length);
                 setApplications([...apps.data].sort((a, b) => a.company.localeCompare(b.company, 'de')));
             })
             .catch((e) => toast(errorMessage(e)));
-    }, [version, toast]);
+    }, [version, toast, setInboxCount]);
 
     if (items === null) return <p className="text-slate-400">Laden…</p>;
 

@@ -17,6 +17,7 @@ function message(forward = vi.fn(async () => undefined)) {
         to: 'bewerbungen+abcd@example.ch',
         raw: new Response(RAW).body!,
         rawSize: RAW.length,
+        headers: new Headers({ Subject: 'Hallo' }),
         setReject,
         forward,
     };
@@ -100,6 +101,28 @@ describe('deliver', () => {
             );
             await deliver(msg, withFallback, down);
             expect(setReject).toHaveBeenCalledWith(expect.stringContaining('Weiterleitung fehlgeschlagen'));
+        });
+    
+        it('sends a note to the fallback address when the binding is there', async () => {
+            const send = vi.fn(async () => undefined);
+            const { msg, forward } = message();
+            await deliver(msg, { ...withFallback, NOTIFY: { send } }, down);
+            expect(forward).toHaveBeenCalledOnce();
+            expect(send).toHaveBeenCalledOnce();
+            const [note] = send.mock.calls[0] as unknown as [{ from: string; to: string; raw: string }];
+            expect(note.from).toBe('bewerbungen+abcd@example.ch');
+            expect(note.to).toBe('papa@example.ch');
+            expect(note.raw).toContain('To: papa@example.ch');
+        });
+
+        it('still forwards when the note fails', async () => {
+            const send = vi.fn(async () => {
+                throw new Error('E_SENDER_NOT_VERIFIED');
+            });
+            const { msg, setReject, forward } = message();
+            await deliver(msg, { ...withFallback, NOTIFY: { send } }, down);
+            expect(forward).toHaveBeenCalledOnce();
+            expect(setReject).not.toHaveBeenCalled();
         });
     });
 });

@@ -187,7 +187,8 @@ Cloudflare setup (documented in `README_DOCKER.md`):
    login redirect counts as a failure.
 3. If the response is not 2xx (or the app is unreachable), the Worker forwards the mail to the
    optional `FALLBACK_ADDRESS` (a verified Email Routing destination) with a header
-   `X-Family-Jobs-Error`. Without a fallback, or if forwarding fails, it calls
+   `X-Family-Jobs-Error`, plus a separate note (send_email binding `NOTIFY`, best effort) saying
+   why, from whom and which subject. Without a fallback, or if forwarding fails, it calls
    `message.setReject(...)`, so the sender gets a bounce instead of the mail being lost silently.
 
 Backend processing of `POST /api/inbound`:

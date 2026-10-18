@@ -4,6 +4,10 @@ name = "family-jobs-inbound"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
+# Sends the note to FALLBACK_ADDRESS (a verified Email Routing destination) when it gets a mail
+[[send_email]]
+name = "NOTIFY"
+
 # Secrets, set with `npx wrangler secret put <NAME>`:
 #   APP_URL                   public URL of the app through the Cloudflare Tunnel,
 #                             e.g. https://bewerbungen.example.ch (a secret, so it stays out of the repo)

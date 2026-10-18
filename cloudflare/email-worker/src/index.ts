@@ -1,3 +1,6 @@
+import { EmailMessage } from 'cloudflare:email';
+import { buildNotice } from './notice';
+
 export interface Env {
     APP_URL: string;
     INBOUND_SECRET: string;
@@ -5,6 +8,8 @@ export interface Env {
     CF_ACCESS_CLIENT_SECRET: string;
     // Optional: a verified Email Routing destination that gets the mail when the app can't take it
     FALLBACK_ADDRESS?: string;
+    // send_email binding (wrangler.toml) for a note to the fallback address about why it got the mail
+    NOTIFY?: { send(message: EmailMessage): Promise<unknown> };
 }
 
 // The parts of Cloudflare's ForwardableEmailMessage the worker uses
@@ -13,8 +18,27 @@ export interface InboundMessage {
     readonly to: string;
     readonly raw: ReadableStream<Uint8Array>;
     readonly rawSize: number;
+    readonly headers: Headers;
     setReject(reason: string): void;
     forward(rcptTo: string, headers?: Headers): Promise<unknown>;
+}
+
+/** Tell the fallback address why it got the mail; the mail itself is forwarded already, so this may fail. */
+async function notify(message: InboundMessage, env: Env, to: string, reason: string): Promise<void> {
+    if (!env.NOTIFY) return;
+    try {
+        const raw = buildNotice({
+            from: message.to,
+            to,
+            reason,
+            originalFrom: message.from,
+            originalSubject: message.headers.get('subject') ?? '',
+            appUrl: env.APP_URL,
+        });
+        await env.NOTIFY.send(new EmailMessage(message.to, to, raw));
+    } catch (error) {
+        console.warn(`Hinweis an ${to} nicht gesendet: ${String(error)}`);
+    }
 }
 
 /**
@@ -25,6 +49,7 @@ async function giveUp(message: InboundMessage, env: Env, reason: string): Promis
     if (env.FALLBACK_ADDRESS) {
         try {
             await message.forward(env.FALLBACK_ADDRESS, new Headers({ 'X-Family-Jobs-Error': reason }));
+            await notify(message, env, env.FALLBACK_ADDRESS, reason);
             return;
         } catch (error) {
             reason = `${reason}; Weiterleitung fehlgeschlagen: ${String(error)}`;

@@ -104,3 +104,9 @@ export interface Integrations {
     inbound: Integration;
     reminders: Integration;
 }
+
+// Passed by Layout to its pages through the router outlet
+export interface LayoutContext {
+    // Pages that know the inbox count better than the last navigation update the badge with it
+    setInboxCount: (count: number) => void;
+}

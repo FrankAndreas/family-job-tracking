@@ -174,7 +174,10 @@ replace `<domain>` below with it. Otherwise do **not** add a subdomain there.
 7. **Fallback address (recommended).** While the app is unreachable (an update, a NAS restart, a
    tunnel outage), the worker can't deliver. Without a fallback it rejects the mail and the sender,
    e.g. a company's HR, gets a bounce. With one, the worker forwards the mail there instead, with a
-   header `X-Family-Jobs-Error` saying why; forward it to `bewerbungen@<domain>` later.
+   header `X-Family-Jobs-Error` saying why, and sends a short note next to it ("Bewerbungen: Mail
+   weitergeleitet, App nicht erreichbar") with the reason, sender and subject. Forward the mail to
+   `bewerbungen@<domain>` once the app runs again. The note uses the worker's `send_email` binding
+   `NOTIFY`; if Cloudflare refuses to send it, the mail is forwarded all the same.
    - In **Email Routing → Destination addresses → Add destination address**, add an address
      outside this domain (e.g. your own mailbox) and confirm the verification mail.
    - Set it on the worker:
