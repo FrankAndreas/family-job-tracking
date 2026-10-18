@@ -19,6 +19,7 @@ TABLES = [
     ("events", models.Event),
     ("emails", models.Email),
     ("attachments", models.Attachment),
+    ("suggestions", models.Suggestion),
 ]
 # Login secrets stay out of the export
 EXCLUDED_COLUMNS = {"pin_hash", "failed_logins", "locked_until"}
@@ -53,6 +54,8 @@ CHANNEL_LABELS = {
     "in_person": "Persönlich",
     "other": "Andere",
 }
+
+SUGGESTION_LABELS = {"open": "Offen", "applied": "Beworben", "declined": "Nicht interessiert"}
 
 
 def _cell(value):
@@ -123,6 +126,23 @@ def _timeline(applications: list[models.Application]) -> str:
     return _csv(header, rows)
 
 
+def _suggestions(db: Session) -> str:
+    header = [
+        "Status", "Firma", "Stelle", "Ort", "Frist", "Link", "Notiz", "Vorgeschlagen von", "Vorgeschlagen am",
+        "Entschieden von", "Entschieden am", "Grund",
+    ]
+    rows = [
+        [
+            SUGGESTION_LABELS.get(s.status, s.status), s.company, s.position, s.location,
+            s.deadline.strftime("%d.%m.%Y") if s.deadline else "", s.url, s.note,
+            s.creator.name if s.creator else "", _datetime(s.created_at),
+            s.decider.name if s.decider else "", _datetime(s.decided_at) if s.decided_at else "", s.decline_reason,
+        ]
+        for s in db.query(models.Suggestion).order_by(models.Suggestion.created_at, models.Suggestion.id)
+    ]
+    return _csv(header, rows)
+
+
 def build_zip(db: Session) -> Path:
     """Readable overview and timeline, all tables as CSV and the files folder, in a temporary ZIP the caller deletes."""
     fd, name = tempfile.mkstemp(suffix=".zip")
@@ -137,6 +157,7 @@ def build_zip(db: Session) -> Path:
     with zipfile.ZipFile(name, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("uebersicht.csv", _overview(applications, followup_days))
         archive.writestr("zeitleiste.csv", _timeline(applications))
+        archive.writestr("vorschlaege.csv", _suggestions(db))
         for table, model in TABLES:
             columns = [c.name for c in model.__table__.columns if c.name not in EXCLUDED_COLUMNS]
             rows = ([_cell(getattr(row, column)) for column in columns] for row in db.query(model).order_by(model.id))

@@ -167,3 +167,23 @@ def test_export_timeline_readable(client, admin_headers):
     assert row["Notiz"] == "Telefonisch"
     assert row["Erfasst von"] == "Admin"
     assert row["Anhänge"] == "brief.pdf"
+
+
+def test_export_suggestions(client, admin_headers):
+    s = client.post(
+        "/api/suggestions",
+        json={"url": "https://yousty.ch/1", "company": "Bäckerei Zürich", "deadline": "2026-11-01"},
+        headers=admin_headers,
+    ).json()
+    client.post(f"/api/suggestions/{s['id']}/decline", json={"reason": "zu früh"}, headers=admin_headers)
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    header, *rows = read_csv(archive, "vorschlaege.csv")
+    row = dict(zip(header, rows[0]))
+    assert row["Status"] == "Nicht interessiert"
+    assert row["Firma"] == "Bäckerei Zürich"
+    assert row["Frist"] == "01.11.2026"
+    assert row["Link"] == "https://yousty.ch/1"
+    assert row["Vorgeschlagen von"] == "Admin"
+    assert row["Grund"] == "zu früh"
+    raw_header, *_ = read_csv(archive, "suggestions.csv")
+    assert "url_key" in raw_header
