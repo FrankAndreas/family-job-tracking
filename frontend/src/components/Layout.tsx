@@ -11,6 +11,7 @@ export default function Layout() {
     const { user, logout } = useAuth();
     const location = useLocation();
     const [inboxCount, setInboxCount] = useState(0);
+    const [suggestionCount, setSuggestionCount] = useState(0);
     const [integrationError, setIntegrationError] = useState(false);
 
     // Refresh the badges whenever the page changes
@@ -20,6 +21,7 @@ export default function Layout() {
             .then(([dashboard, integrations]) => {
                 if (cancelled) return;
                 setInboxCount(dashboard.data.inbox_count);
+                setSuggestionCount(dashboard.data.suggestion_count);
                 setIntegrationError(
                     integrations.data.inbound.state === 'error' || integrations.data.reminders.state === 'error',
                 );
@@ -38,6 +40,14 @@ export default function Layout() {
                     <nav className="flex gap-1">
                         <NavLink to="/" end className={linkClass}>
                             Übersicht
+                        </NavLink>
+                        <NavLink to="/vorschlaege" className={linkClass}>
+                            Vorschläge
+                            {suggestionCount > 0 && (
+                                <span className="ml-1 rounded-full bg-blue-600 px-2 text-xs text-white">
+                                    {suggestionCount}
+                                </span>
+                            )}
                         </NavLink>
                         <NavLink to="/posteingang" className={linkClass}>
                             Posteingang
@@ -61,7 +71,7 @@ export default function Layout() {
                 </div>
             </header>
             <main className="mx-auto max-w-4xl px-4 py-6">
-                <Outlet context={{ setInboxCount } satisfies LayoutContext} />
+                <Outlet context={{ setInboxCount, setSuggestionCount } satisfies LayoutContext} />
             </main>
         </div>
     );

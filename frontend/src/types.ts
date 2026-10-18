@@ -80,6 +80,7 @@ export interface Dashboard {
     counts: Record<Status, number>;
     due: ApplicationSummary[];
     inbox_count: number;
+    suggestion_count: number;
 }
 
 export interface InboxItem extends EmailItem {
@@ -109,4 +110,43 @@ export interface Integrations {
 export interface LayoutContext {
     // Pages that know the inbox count better than the last navigation update the badge with it
     setInboxCount: (count: number) => void;
+    setSuggestionCount: (count: number) => void;
+}
+
+export type SuggestionStatus = 'open' | 'applied' | 'declined';
+
+export interface SuggestionFormValues {
+    url: string;
+    company: string;
+    position: string;
+    location: string;
+    deadline: string; // YYYY-MM-DD or '' for none
+    note: string;
+}
+
+export interface Suggestion extends Omit<SuggestionFormValues, 'deadline'> {
+    id: number;
+    deadline: string | null;
+    status: SuggestionStatus;
+    decline_reason: string;
+    source: 'app' | 'mail';
+    created_at: string;
+    created_by_name: string | null;
+    decided_at: string | null;
+    decided_by_name: string | null;
+    application: { id: number; company: string; position: string } | null;
+    deadline_passed: boolean;
+}
+
+export interface SuggestionDuplicate {
+    kind: 'suggestion' | 'application';
+    id: number;
+    label: string;
+    date: string;
+    status?: SuggestionStatus;
+}
+
+export interface SuggestionCheck {
+    duplicates: SuggestionDuplicate[];
+    title: string | null;
 }
