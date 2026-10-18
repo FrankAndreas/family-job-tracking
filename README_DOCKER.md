@@ -102,6 +102,10 @@ forwarded to it lands in that application's timeline, including attachments. A m
 application (its contact address or earlier mails, not for gmail.com and the like, not for your own
 addresses). Everything else lands in the **Posteingang**, with a suggestion where one fits.
 
+Links mailed to `bewerbungen+vorschlag@<domain>` from a user's saved address become suggestions on
+the page **Vorschläge** (one per link, at most 10 per mail). This needs no extra Email Routing rule.
+From any other sender, or without a link, the mail lands in the Posteingang.
+
 `bewerbungen` is only the mailbox name in front of the `@`; mail is received on your main domain.
 Check first that the domain doesn't already receive mail elsewhere:
 

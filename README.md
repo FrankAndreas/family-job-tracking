@@ -11,7 +11,11 @@ and see everything.
 - **E-mails into the timeline**: each application has its own address
   (`bewerbungen+a7k2@your-domain`); put it in BCC or forward mails there and they appear in the
   timeline. Mails without such an address land in the inbox for one-click assignment.
-- **Daily reminder** by e-mail (via Resend) when a follow-up is due.
+- **Vorschläge:** anyone posts a link to an open apprenticeship (in the app, or by mailing it to
+  `bewerbungen+vorschlag@your-domain`); the page title fills in the position, duplicates are
+  flagged, and "Bewerben" turns a suggestion into an application.
+- **Daily reminder** by e-mail (via Resend) when a follow-up is due, a suggestion is new or its
+  deadline is near.
 
 The UI is German. Stack: FastAPI + SQLite, React + Vite + Tailwind, nginx, a Cloudflare Email
 Worker; runs as two Docker containers next to family-budget-dashboard and family-chore.
