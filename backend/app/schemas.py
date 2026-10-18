@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -164,3 +164,55 @@ class SettingsPatch(BaseModel):
         if value is None:
             return None
         return clean_email(value) or ""
+
+
+def clean_link(value: str | None) -> str | None:
+    """A trimmed http(s) link; anything else is refused."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value.lower().startswith(("http://", "https://")) or len(value) <= len("https://"):
+        raise ValueError("Der Link muss mit http:// oder https:// beginnen")
+    return value
+
+
+class SuggestionIn(BaseModel):
+    url: str = Field(max_length=500)
+    company: str = Field("", max_length=200)
+    position: str = Field("", max_length=200)
+    location: str = Field("", max_length=200)
+    deadline: date | None = None
+    note: str = ""
+
+    check_url = field_validator("url")(clean_link)
+
+
+class SuggestionPatch(BaseModel):
+    """Fields left out stay unchanged; null clears only the deadline."""
+
+    url: str | None = Field(None, max_length=500)
+    company: str | None = Field(None, max_length=200)
+    position: str | None = Field(None, max_length=200)
+    location: str | None = Field(None, max_length=200)
+    deadline: date | None = None
+    note: str | None = None
+
+    check_url = field_validator("url")(clean_link)
+
+
+class SuggestionApplyIn(BaseModel):
+    """Overrides for the new application; left out means the suggestion's value."""
+
+    company: str | None = Field(None, max_length=200)
+    position: str | None = Field(None, max_length=200)
+    location: str | None = Field(None, max_length=200)
+
+
+class SuggestionDeclineIn(BaseModel):
+    reason: str = ""
+
+
+class SuggestionCheckIn(BaseModel):
+    url: str = Field(max_length=500)
+
+    check_url = field_validator("url")(clean_link)

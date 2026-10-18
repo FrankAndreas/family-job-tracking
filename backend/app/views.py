@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from . import models
 from . import status as st
@@ -80,4 +80,30 @@ def detail(application: models.Application, settings: models.Settings, now: date
         "created_by_name": _name(application.creator),
         "mail_address": mail_address(settings.inbound_address, application.mail_tag),
         "events": [event_out(e) for e in events],
+    }
+
+
+def suggestion_out(s: models.Suggestion, today: date) -> dict:
+    application = s.application
+    return {
+        "id": s.id,
+        "url": s.url,
+        "company": s.company,
+        "position": s.position,
+        "location": s.location,
+        "deadline": s.deadline.isoformat() if s.deadline else None,
+        "note": s.note,
+        "status": s.status,
+        "decline_reason": s.decline_reason,
+        "source": s.source,
+        "created_at": iso(s.created_at),
+        "created_by_name": _name(s.creator),
+        "decided_at": iso(s.decided_at),
+        "decided_by_name": _name(s.decider),
+        "application": (
+            {"id": application.id, "company": application.company, "position": application.position}
+            if application
+            else None
+        ),
+        "deadline_passed": bool(s.deadline and s.deadline < today),
     }

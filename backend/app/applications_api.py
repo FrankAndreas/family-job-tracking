@@ -234,4 +234,7 @@ def dashboard(db: Session = Depends(get_db)):
         .filter(models.Email.application_id.is_(None), models.Email.dismissed.is_(False))
         .count()
     )
-    return {"counts": counts, "due": due, "inbox_count": inbox_count}
+    suggestion_count = (
+        db.query(models.Suggestion).filter(models.Suggestion.status == models.SuggestionStatus.OPEN.value).count()
+    )
+    return {"counts": counts, "due": due, "inbox_count": inbox_count, "suggestion_count": suggestion_count}

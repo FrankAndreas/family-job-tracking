@@ -59,3 +59,127 @@ def test_extract_links():
 )
 def test_clean_subject(subject, expected):
     assert suggestions.clean_subject(subject) == expected
+
+
+def post_suggestion(client, headers, url="https://yousty.ch/lehrstellen/1", **fields):
+    response = client.post("/api/suggestions", json={"url": url, **fields}, headers=headers)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def test_suggestions_need_login(client):
+    assert client.get("/api/suggestions").status_code == 401
+
+
+def test_create_and_list(client, admin_headers):
+    created = post_suggestion(
+        client, admin_headers, " https://yousty.ch/lehrstellen/1 ", company="Migros", deadline="2026-11-01", note="nah"
+    )
+    assert created["url"] == "https://yousty.ch/lehrstellen/1"
+    assert created["status"] == "open"
+    assert created["source"] == "app"
+    assert created["created_by_name"] == "Admin"
+    assert created["deadline"] == "2026-11-01"
+    assert client.get("/api/suggestions", headers=admin_headers).json()[0]["id"] == created["id"]
+
+
+@pytest.mark.parametrize("url", ["www.yousty.ch/x", "ftp://yousty.ch/x", "javascript:alert(1)", "", "https://" + "a" * 500])
+def test_create_refuses_other_links(client, admin_headers, url):
+    assert client.post("/api/suggestions", json={"url": url}, headers=admin_headers).status_code == 422
+
+
+def test_patch_and_clear_deadline(client, admin_headers):
+    s = post_suggestion(client, admin_headers, deadline="2026-11-01")
+    response = client.patch(
+        f"/api/suggestions/{s['id']}", json={"company": "Coop", "deadline": None}, headers=admin_headers
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["company"] == "Coop"
+    assert response.json()["deadline"] is None
+
+
+def test_patch_url_updates_duplicate_key(client, admin_headers, db):
+    s = post_suggestion(client, admin_headers)
+    client.patch(f"/api/suggestions/{s['id']}", json={"url": "https://www.jobs.ch/z/"}, headers=admin_headers)
+    assert db.get(models.Suggestion, s["id"]).url_key == "https://jobs.ch/z"
+
+
+def test_delete(client, admin_headers):
+    s = post_suggestion(client, admin_headers)
+    assert client.delete(f"/api/suggestions/{s['id']}", headers=admin_headers).status_code == 204
+    assert client.get("/api/suggestions", headers=admin_headers).json() == []
+
+
+def test_apply_creates_application(client, admin_headers):
+    sohn = create_user(client, admin_headers, "Sohn")
+    s = post_suggestion(client, admin_headers, company="Migros", position="Informatiker", location="Bern", note="toll")
+    sohn_headers = login(client, "Sohn", "5678")
+    response = client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=sohn_headers)
+    assert response.status_code == 201, response.text
+    application = client.get(f"/api/applications/{response.json()['application_id']}", headers=admin_headers).json()
+    assert (application["company"], application["position"], application["location"]) == ("Migros", "Informatiker", "Bern")
+    assert application["posting_url"] == s["url"]
+    assert application["notes"] == "toll"
+    after = client.get("/api/suggestions", headers=admin_headers).json()[0]
+    assert after["status"] == "applied"
+    assert after["decided_by_name"] == sohn["name"]
+    assert after["application"]["id"] == application["id"]
+
+
+def test_apply_needs_a_company(client, admin_headers):
+    s = post_suggestion(client, admin_headers)
+    assert client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=admin_headers).status_code == 422
+    response = client.post(f"/api/suggestions/{s['id']}/apply", json={"company": " Coop "}, headers=admin_headers)
+    assert response.status_code == 201
+    assert client.get("/api/suggestions", headers=admin_headers).json()[0]["company"] == "Coop"
+
+
+def test_apply_twice_is_409_and_creates_one_application(client, admin_headers):
+    s = post_suggestion(client, admin_headers, company="Migros")
+    assert client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=admin_headers).status_code == 201
+    assert client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=admin_headers).status_code == 409
+    assert len(client.get("/api/applications", headers=admin_headers).json()) == 1
+
+
+def test_decline_and_reopen(client, admin_headers):
+    s = post_suggestion(client, admin_headers)
+    response = client.post(f"/api/suggestions/{s['id']}/decline", json={"reason": "zu weit"}, headers=admin_headers)
+    assert response.json()["status"] == "declined"
+    assert response.json()["decline_reason"] == "zu weit"
+    assert client.post(f"/api/suggestions/{s['id']}/decline", json={}, headers=admin_headers).status_code == 409
+    reopened = client.post(f"/api/suggestions/{s['id']}/reopen", headers=admin_headers).json()
+    assert (reopened["status"], reopened["decline_reason"], reopened["decided_by_name"]) == ("open", "", None)
+    assert client.post(f"/api/suggestions/{s['id']}/reopen", headers=admin_headers).status_code == 409
+
+
+def test_reopen_keeps_the_application(client, admin_headers):
+    s = post_suggestion(client, admin_headers, company="Migros")
+    client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=admin_headers)
+    reopened = client.post(f"/api/suggestions/{s['id']}/reopen", headers=admin_headers).json()
+    assert reopened["application"] is None
+    assert len(client.get("/api/applications", headers=admin_headers).json()) == 1
+
+
+def test_deleted_application_leaves_the_suggestion_applied(client, admin_headers):
+    s = post_suggestion(client, admin_headers, company="Migros")
+    app_id = client.post(f"/api/suggestions/{s['id']}/apply", json={}, headers=admin_headers).json()["application_id"]
+    assert client.delete(f"/api/applications/{app_id}", headers=admin_headers).status_code == 204
+    after = client.get("/api/suggestions", headers=admin_headers).json()[0]
+    assert (after["status"], after["application"]) == ("applied", None)
+
+
+def test_deadline_passed(client, admin_headers):
+    s = post_suggestion(client, admin_headers, deadline="2020-01-01")
+    assert s["deadline_passed"] is True
+    assert post_suggestion(client, admin_headers, "https://jobs.ch/2", deadline="2099-01-01")["deadline_passed"] is False
+
+
+def test_unknown_suggestion_is_404(client, admin_headers):
+    assert client.post("/api/suggestions/99/decline", json={}, headers=admin_headers).status_code == 404
+
+
+def test_dashboard_counts_open_suggestions(client, admin_headers):
+    post_suggestion(client, admin_headers, "https://jobs.ch/1")
+    declined = post_suggestion(client, admin_headers, "https://jobs.ch/2")
+    client.post(f"/api/suggestions/{declined['id']}/decline", json={}, headers=admin_headers)
+    assert client.get("/api/dashboard", headers=admin_headers).json()["suggestion_count"] == 1
