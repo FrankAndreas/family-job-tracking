@@ -11,12 +11,12 @@ def web(monkeypatch):
     pages: dict[tuple[str, str], tuple[int, str | None, str, bytes]] = {}
     requests: list[tuple[str, str, str, int, str]] = []
 
-    def resolve(host, port):
+    def resolve(host, port, deadline):
         if host not in dns:
             raise pagetitle.Refused(f"Unbekannter Host: {host}")
         return dns[host]
 
-    def request(scheme, host, ip, port, target):
+    def request(scheme, host, ip, port, target, deadline):
         requests.append((scheme, host, ip, port, target))
         return pages.get((host, target), (404, None, "text/html", b""))
 
@@ -123,3 +123,55 @@ def test_check_endpoint(client, admin_headers, web):
 
 def test_check_endpoint_refuses_non_links(client, admin_headers):
     assert client.post("/api/suggestions/check", json={"url": "yousty.ch"}, headers=admin_headers).status_code == 422
+
+
+def test_a_slow_page_is_given_up_after_the_overall_timeout(monkeypatch):
+    """A server that drips bytes slower than nothing but faster than the socket timeout must not hold the request."""
+    import socket
+    import threading
+    import time
+
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    def drip():
+        conn, _ = server.accept()
+        conn.recv(4096)
+        conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><head><title>")
+        for _ in range(30):
+            time.sleep(0.2)
+            try:
+                conn.sendall(b"x")
+            except OSError:
+                break
+        conn.close()
+
+    threading.Thread(target=drip, daemon=True).start()
+    monkeypatch.setattr(pagetitle, "TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(pagetitle, "PORTS", {"http": port, "https": 443})
+    monkeypatch.setattr(pagetitle, "_public_address", lambda host, port, deadline: "127.0.0.1")
+    start = time.monotonic()
+    assert pagetitle.fetch_title(f"http://slow.example.ch:{port}/") is None
+    assert time.monotonic() - start < 2.5
+    server.close()
+
+
+def test_a_hanging_dns_lookup_is_given_up(monkeypatch):
+    import time
+
+    monkeypatch.setattr(pagetitle, "TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(pagetitle.socket, "getaddrinfo", lambda *args, **kwargs: time.sleep(3) or [])
+    start = time.monotonic()
+    assert pagetitle.fetch_title("https://hangs.example.ch/") is None
+    assert time.monotonic() - start < 2.5
+
+
+def test_check_holds_no_database_connection_while_fetching(client, admin_headers, monkeypatch):
+    from app import database
+
+    seen = []
+    monkeypatch.setattr(pagetitle, "fetch_title", lambda url: seen.append(database.engine.pool.checkedout()) or None)
+    client.post("/api/suggestions/check", json={"url": "https://yousty.ch/a"}, headers=admin_headers)
+    assert seen == [0]

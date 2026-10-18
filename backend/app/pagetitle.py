@@ -5,6 +5,9 @@ import ipaddress
 import logging
 import socket
 import ssl
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
@@ -18,6 +21,9 @@ PORTS = {"http": 80, "https": 443}
 REDIRECTS = {301, 302, 303, 307, 308}
 USER_AGENT = "Mozilla/5.0 (compatible; FamilyJobTracking/1.0)"
 
+# getaddrinfo has no timeout of its own: look up in a worker and stop waiting when time is up
+_dns = ThreadPoolExecutor(max_workers=4, thread_name_prefix="pagetitle-dns")
+
 
 class Refused(Exception):
     """The link may not be fetched."""
@@ -30,17 +36,28 @@ def _is_public(address: str) -> bool:
     return ip.is_global and not ip.is_multicast
 
 
-def _resolve(host: str, port: int) -> list[str]:
+def _remaining(deadline: float) -> float:
+    """Seconds left until the deadline of the whole fetch (time.monotonic())."""
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise TimeoutError("Zeitlimit überschritten")
+    return left
+
+
+def _resolve(host: str, port: int, deadline: float) -> list[str]:
+    lookup = _dns.submit(socket.getaddrinfo, host, port, type=socket.SOCK_STREAM)
     try:
-        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        infos = lookup.result(timeout=_remaining(deadline))
+    except FutureTimeout as exc:
+        raise Refused(f"Keine Antwort für {host}") from exc
     except OSError as exc:
         raise Refused(f"Unbekannter Host: {host}") from exc
     return [info[4][0] for info in infos]
 
 
-def _public_address(host: str, port: int) -> str:
+def _public_address(host: str, port: int, deadline: float) -> str:
     """The address to connect to; refused if any address of the host is not on the public internet."""
-    addresses = _resolve(host, port)
+    addresses = _resolve(host, port, deadline)
     if not addresses or not all(_is_public(a) for a in addresses):
         raise Refused(f"{host} ist keine öffentliche Adresse")
     return addresses[0]
@@ -49,8 +66,8 @@ def _public_address(host: str, port: int) -> str:
 class _PinnedHTTPConnection(http.client.HTTPConnection):
     """Connects to the checked address, so a second DNS answer can't point it elsewhere."""
 
-    def __init__(self, host: str, ip: str, port: int):
-        super().__init__(host, port, timeout=TIMEOUT_SECONDS)
+    def __init__(self, host: str, ip: str, port: int, timeout: float):
+        super().__init__(host, port, timeout=timeout)
         self._ip = ip
 
     def connect(self):
@@ -58,8 +75,8 @@ class _PinnedHTTPConnection(http.client.HTTPConnection):
 
 
 class _PinnedHTTPSConnection(http.client.HTTPSConnection):
-    def __init__(self, host: str, ip: str, port: int):
-        super().__init__(host, port, timeout=TIMEOUT_SECONDS, context=ssl.create_default_context())
+    def __init__(self, host: str, ip: str, port: int, timeout: float):
+        super().__init__(host, port, timeout=timeout, context=ssl.create_default_context())
         self._ip = ip
 
     def connect(self):
@@ -67,15 +84,27 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
-def _request(scheme: str, host: str, ip: str, port: int, target: str) -> tuple[int, str | None, str, bytes]:
+def _request(
+    scheme: str, host: str, ip: str, port: int, target: str, deadline: float
+) -> tuple[int, str | None, str, bytes]:
+    """One GET; every socket operation gets only the time left until the deadline, so a slow server can't stall."""
     connection_class = _PinnedHTTPSConnection if scheme == "https" else _PinnedHTTPConnection
-    connection = connection_class(host, ip, port)
+    connection = connection_class(host, ip, port, _remaining(deadline))
     try:
         connection.request("GET", target, headers={"User-Agent": USER_AGENT, "Accept": "text/html"})
+        sock = connection.sock  # the response reads from it even after http.client lets go of it
+        sock.settimeout(_remaining(deadline))
         response = connection.getresponse()
-        return response.status, response.getheader("Location"), response.getheader("Content-Type", ""), response.read(
-            MAX_BYTES
-        )
+        chunks: list[bytes] = []
+        size = 0
+        while size < MAX_BYTES:
+            sock.settimeout(_remaining(deadline))
+            chunk = response.read1(min(64 * 1024, MAX_BYTES - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+        return response.status, response.getheader("Location"), response.getheader("Content-Type", ""), b"".join(chunks)
     finally:
         connection.close()
 
@@ -137,11 +166,12 @@ def extract_title(html: str) -> str | None:
 
 def fetch_title(url: str) -> str | None:
     """The page's title, or None if it can't or may not be fetched."""
+    deadline = time.monotonic() + TIMEOUT_SECONDS  # for the whole fetch, redirects included
     try:
         for _ in range(MAX_REDIRECTS + 1):
             scheme, host, port, target = _split(url)
-            ip = _public_address(host, port)
-            status, location, content_type, body = _request(scheme, host, ip, port, target)
+            ip = _public_address(host, port, deadline)
+            status, location, content_type, body = _request(scheme, host, ip, port, target, deadline)
             if status in REDIRECTS and location:
                 url = urljoin(url, location)
                 continue

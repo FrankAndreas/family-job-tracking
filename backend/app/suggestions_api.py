@@ -49,7 +49,10 @@ def create_suggestion(
 @router.post("/suggestions/check")
 def check_link(body: schemas.SuggestionCheckIn, db: Session = Depends(get_db)):
     """Earlier suggestions and applications with this link, and the page's title as a suggested position."""
-    return {"duplicates": suggestions.find_duplicates(db, body.url), "title": pagetitle.fetch_title(body.url)}
+    # The fetch may take seconds: give the database connection (taken for the login) back meanwhile
+    db.close()
+    title = pagetitle.fetch_title(body.url)
+    return {"duplicates": suggestions.find_duplicates(db, body.url), "title": title}
 
 
 @router.patch("/suggestions/{suggestion_id}")
