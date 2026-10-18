@@ -115,3 +115,50 @@ def test_mail_without_date_uses_arrival_time(client, db):
 def test_oversize_mail_is_413(client, monkeypatch):
     monkeypatch.setattr(inbox_api, "MAX_INBOUND_BYTES", 10)
     assert post_mail(client, build_mail()).status_code == 413
+
+
+def test_untagged_mail_from_a_known_company_is_assigned(client, admin_headers, db):
+    migros = create_application(client, admin_headers, "Migros", contact_email="jobs@migros.ch")
+    create_application(client, admin_headers, "Coop", contact_email="jobs@coop.ch")
+    raw = build_mail(to="sohn@example.ch", sender="hr@migros.ch", attachments=[("Einladung.pdf", b"x", "application/pdf")])
+    assert post_mail(client, raw, envelope_to="bewerbungen@example.ch").json()["application_id"] == migros["id"]
+    assert [e["type"] for e in detail(client, admin_headers, migros["id"])["events"]] == ["mail_received"]
+    assert db.query(models.Email).one().attachments[0].path.startswith("migros/")
+
+
+def test_untagged_mail_matches_earlier_mails_of_the_sender_domain(client, admin_headers):
+    migros = create_application(client, admin_headers, "Migros")
+    post_mail(client, build_mail(sender="hr@migros.ch", message_id="<m1@migros.ch>"), envelope_to=tagged(migros))
+    raw = build_mail(sender="chefin@migros.ch", to="bewerbungen@example.ch", message_id="<m2@migros.ch>")
+    assert post_mail(client, raw).json()["application_id"] == migros["id"]
+
+
+@pytest.mark.parametrize(
+    "setup",
+    [
+        "two_applications",  # ambiguous: which one?
+        "archived",  # finished applications get no new mails automatically
+        "freemail",  # gmail.com says nothing about the company
+    ],
+)
+def test_untagged_mail_stays_in_inbox_unless_the_match_is_unique(client, admin_headers, setup):
+    sender = "hr@migros.ch"
+    if setup == "two_applications":
+        create_application(client, admin_headers, "Migros", contact_email="a@migros.ch")
+        create_application(client, admin_headers, "Migros Bank", contact_email="b@migros.ch")
+    elif setup == "archived":
+        app = create_application(client, admin_headers, "Migros", contact_email="a@migros.ch")
+        client.patch(f"/api/applications/{app['id']}", json={"archived": True}, headers=admin_headers)
+    else:
+        sender = "chef@gmail.com"
+        create_application(client, admin_headers, "Garage Meier", contact_email=sender)
+    raw = build_mail(sender=sender, to="bewerbungen@example.ch")
+    assert post_mail(client, raw).json()["application_id"] is None
+
+
+def test_untagged_mail_from_a_user_stays_in_inbox(client, admin_headers):
+    # A forwarded mail comes from the user, not from the company
+    create_user(client, admin_headers, "Sohn", email="sohn@firma-papa.ch")
+    create_application(client, admin_headers, "Firma Papa", contact_email="hr@firma-papa.ch")
+    raw = build_mail(sender="sohn@firma-papa.ch", to="bewerbungen@example.ch")
+    assert post_mail(client, raw).json()["application_id"] is None

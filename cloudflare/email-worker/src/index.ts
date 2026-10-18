@@ -3,6 +3,8 @@ export interface Env {
     INBOUND_SECRET: string;
     CF_ACCESS_CLIENT_ID: string;
     CF_ACCESS_CLIENT_SECRET: string;
+    // Optional: a verified Email Routing destination that gets the mail when the app can't take it
+    FALLBACK_ADDRESS?: string;
 }
 
 // The parts of Cloudflare's ForwardableEmailMessage the worker uses
@@ -12,15 +14,29 @@ export interface InboundMessage {
     readonly raw: ReadableStream<Uint8Array>;
     readonly rawSize: number;
     setReject(reason: string): void;
+    forward(rcptTo: string, headers?: Headers): Promise<unknown>;
 }
 
 /**
- * Post the raw mail to the app. If the app doesn't accept it, reject the mail,
- * so the sender gets a bounce instead of the mail being lost silently.
+ * The app couldn't take the mail: forward it to the fallback address if there is one,
+ * otherwise reject it, so the sender gets a bounce instead of the mail being lost silently.
  */
+async function giveUp(message: InboundMessage, env: Env, reason: string): Promise<void> {
+    if (env.FALLBACK_ADDRESS) {
+        try {
+            await message.forward(env.FALLBACK_ADDRESS, new Headers({ 'X-Family-Jobs-Error': reason }));
+            return;
+        } catch (error) {
+            reason = `${reason}; Weiterleitung fehlgeschlagen: ${String(error)}`;
+        }
+    }
+    message.setReject(reason);
+}
+
+/** Post the raw mail to the app; if it doesn't accept it, give up on it (see giveUp). */
 export async function deliver(message: InboundMessage, env: Env, fetchImpl: typeof fetch = fetch): Promise<void> {
     if (!env.APP_URL) {
-        message.setReject('Family Job Tracking: APP_URL ist im Worker nicht gesetzt');
+        await giveUp(message, env, 'Family Job Tracking: APP_URL ist im Worker nicht gesetzt');
         return;
     }
     const body = await new Response(message.raw).arrayBuffer();
@@ -41,11 +57,11 @@ export async function deliver(message: InboundMessage, env: Env, fetchImpl: type
             redirect: 'manual',
         });
     } catch (error) {
-        message.setReject(`Family Job Tracking nicht erreichbar: ${String(error)}`);
+        await giveUp(message, env, `Family Job Tracking nicht erreichbar: ${String(error)}`);
         return;
     }
     if (!response.ok) {
-        message.setReject(`Family Job Tracking hat die Mail nicht angenommen (HTTP ${response.status})`);
+        await giveUp(message, env, `Family Job Tracking hat die Mail nicht angenommen (HTTP ${response.status})`);
     }
 }
 

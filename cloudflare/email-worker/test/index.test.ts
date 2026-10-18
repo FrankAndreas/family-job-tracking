@@ -10,7 +10,7 @@ const env: Env = {
 
 const RAW = 'Subject: Hallo\r\n\r\nText';
 
-function message() {
+function message(forward = vi.fn(async () => undefined)) {
     const setReject = vi.fn();
     const msg: InboundMessage = {
         from: 'hr@migros.ch',
@@ -18,8 +18,9 @@ function message() {
         raw: new Response(RAW).body!,
         rawSize: RAW.length,
         setReject,
+        forward,
     };
-    return { msg, setReject };
+    return { msg, setReject, forward };
 }
 
 describe('deliver', () => {
@@ -63,5 +64,42 @@ describe('deliver', () => {
         await deliver(msg, { ...env, APP_URL: '' }, fetchMock as unknown as typeof fetch);
         expect(fetchMock).not.toHaveBeenCalled();
         expect(setReject).toHaveBeenCalledWith(expect.stringContaining('APP_URL'));
+    });
+
+    describe('with a fallback address', () => {
+        const withFallback: Env = { ...env, FALLBACK_ADDRESS: 'papa@example.ch' };
+        const down = (async () => {
+            throw new Error('connection refused');
+        }) as unknown as typeof fetch;
+
+        it.each([
+            ['unreachable', down],
+            ['answering 502', (async () => new Response(null, { status: 502 })) as unknown as typeof fetch],
+        ])('forwards instead of rejecting when the app is %s', async (_case, fetchImpl) => {
+            const { msg, setReject, forward } = message();
+            await deliver(msg, withFallback, fetchImpl);
+            expect(setReject).not.toHaveBeenCalled();
+            expect(forward).toHaveBeenCalledOnce();
+            const [to, headers] = forward.mock.calls[0] as unknown as [string, Headers];
+            expect(to).toBe('papa@example.ch');
+            expect(headers.get('X-Family-Jobs-Error')).toContain('Family Job Tracking');
+        });
+
+        it('does not forward a mail the app took', async () => {
+            const { msg, setReject, forward } = message();
+            await deliver(msg, withFallback, (async () => new Response('{}', { status: 200 })) as unknown as typeof fetch);
+            expect(forward).not.toHaveBeenCalled();
+            expect(setReject).not.toHaveBeenCalled();
+        });
+
+        it('rejects the mail when forwarding fails too', async () => {
+            const { msg, setReject } = message(
+                vi.fn(async () => {
+                    throw new Error('destination address not verified');
+                }),
+            );
+            await deliver(msg, withFallback, down);
+            expect(setReject).toHaveBeenCalledWith(expect.stringContaining('Weiterleitung fehlgeschlagen'));
+        });
     });
 });

@@ -10,3 +10,5 @@ compatibility_date = "2026-01-01"
 #   INBOUND_SECRET            same value as INBOUND_SECRET in the app's .env
 #   CF_ACCESS_CLIENT_ID       Cloudflare Access service token for /api/inbound
 #   CF_ACCESS_CLIENT_SECRET
+#   FALLBACK_ADDRESS          optional: gets the mail when the app can't take it; must be a verified
+#                             Email Routing destination address outside the routed domain

@@ -96,8 +96,10 @@ menus from time to time; older names are given in brackets.
 ## Incoming e-mails (Cloudflare Email Worker)
 
 Each application has its own address `bewerbungen+<tag>@<domain>`. A mail sent, CC'd, BCC'd or
-forwarded to it lands in that application's timeline, including attachments. Mails to plain
-`bewerbungen@<domain>` land in the **Posteingang**.
+forwarded to it lands in that application's timeline, including attachments. A mail to plain
+`bewerbungen@<domain>` lands in the timeline too if its sender's domain fits exactly one active
+application (its contact address or earlier mails, not for gmail.com and the like, not for your own
+addresses). Everything else lands in the **Posteingang**, with a suggestion where one fits.
 
 `bewerbungen` is only the mailbox name in front of the `@`; mail is received on your main domain.
 Check first that the domain doesn't already receive mail elsewhere:
@@ -156,7 +158,7 @@ replace `<domain>` below with it. Otherwise do **not** add a subdomain there.
    for name in APP_URL INBOUND_SECRET CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET; do
      printf %s "${!name}" | npx wrangler secret put "$name"
    done
-   npx wrangler secret list    # shows the four names, not the values
+   npx wrangler secret list    # shows the names, not the values
    ```
    `printf %s` keeps a trailing newline out of the secret. The app URL is a secret too, so
    `wrangler.toml` holds no personal data. Until all four are set, the worker rejects mails.
@@ -168,7 +170,22 @@ replace `<domain>` below with it. Otherwise do **not** add a subdomain there.
    - under **Routing rules → Custom addresses → Create address**, enter `bewerbungen`, set the action
      to **Send to a Worker** and choose `family-jobs-inbound`. The address shown must be
      `bewerbungen@<domain>`. If the worker isn't in the list, it isn't deployed yet.
-7. **In the app**, open **Einstellungen → App-Einstellungen** (admins only):
+7. **Fallback address (recommended).** While the app is unreachable (an update, a NAS restart, a
+   tunnel outage), the worker can't deliver. Without a fallback it rejects the mail and the sender,
+   e.g. a company's HR, gets a bounce. With one, the worker forwards the mail there instead, with a
+   header `X-Family-Jobs-Error` saying why; forward it to `bewerbungen@<domain>` later.
+   - In **Email Routing → Destination addresses → Add destination address**, add an address
+     outside this domain (e.g. your own mailbox) and confirm the verification mail.
+   - Set it on the worker:
+     ```bash
+     printf %s "$FALLBACK_ADDRESS" | npx wrangler secret put FALLBACK_ADDRESS
+     ```
+   - Test it: stop the app (`sudo docker stop jobs-backend`), send a mail to `bewerbungen@<domain>`,
+     check that it arrives at the fallback address, then start the app again
+     (`sudo docker start jobs-backend`).
+
+   If forwarding fails too (e.g. the address isn't verified), the worker rejects the mail.
+8. **In the app**, open **Einstellungen → App-Einstellungen** (admins only):
    - set the **Eingangsadresse** to `bewerbungen@<domain>`. This is an app setting, not a `.env`
      variable.
    - check that the card **Eingehende Mails** says "Wartet"
@@ -182,6 +199,14 @@ nothing is lost silently. Mails the app cannot read are kept as `.eml` in the Po
 the same mail twice is detected by its Message-ID.
 
 **Mails from you count as "Mail gesendet":** save your own address under **Einstellungen → Mein Konto**.
+
+**Catching replies that go to a private mailbox.** Companies usually answer the address the
+application was sent from, not the `+tag` address. Let that mailbox forward them automatically: in
+Gmail, for example, add `bewerbungen@<domain>` under **Settings → Forwarding and POP/IMAP → Add a
+forwarding address** (Gmail sends a confirmation code there; it shows up in the Posteingang), then
+create a filter such as `from:(@migros.ch OR @coop.ch)` with **Forward it to** that address.
+Automatic forwarding keeps the company as the sender, so the app assigns the mail by its domain.
+A mail forwarded by hand comes from you instead and lands in the Posteingang.
 
 ## Daily reminders (Resend)
 
@@ -241,6 +266,7 @@ scripts/deploy-nas.sh
 | Mails bounce with "HTTP 401" | `INBOUND_SECRET` differs between `.env` and the worker secret |
 | Mails bounce with "APP_URL ist im Worker nicht gesetzt" | the worker secret `APP_URL` (`npx wrangler secret list`) |
 | Mails bounce with "nicht erreichbar" | `APP_URL` in the worker and the tunnel's published application route |
+| Mails arrive at the fallback address | the header `X-Family-Jobs-Error` of the forwarded mail says why |
 | Card "Erinnerungen" is red | the Resend error shown on the card (unverified domain, wrong key) |
 | Reminder e-mails have no links | `APP_URL` in `.env` |
 | Everyone is logged out after an update | `SECRET_KEY` is empty in `.env` |

@@ -185,8 +185,10 @@ Cloudflare setup (documented in `README_DOCKER.md`):
    plus `X-Envelope-To: message.to`. The envelope recipient matters for BCC: a BCC'd `+tag`
    address appears in no header of the mail. The request does not follow redirects, so an Access
    login redirect counts as a failure.
-3. If the response is not 2xx, the Worker calls `message.setReject(...)`, so the sender gets a
-   bounce instead of the mail being lost silently.
+3. If the response is not 2xx (or the app is unreachable), the Worker forwards the mail to the
+   optional `FALLBACK_ADDRESS` (a verified Email Routing destination) with a header
+   `X-Family-Jobs-Error`. Without a fallback, or if forwarding fails, it calls
+   `message.setReject(...)`, so the sender gets a bounce instead of the mail being lost silently.
 
 Backend processing of `POST /api/inbound`:
 
@@ -201,7 +203,9 @@ Backend processing of `POST /api/inbound`:
    attachments using the file naming rules above.
 5. With a matching tag: link the e-mail to the application and create an event at the e-mail's
    `Date`: `mail_sent` if the sender address belongs to a user (`users.email`), else
-   `mail_received`. The event note is the subject. Without a tag: the e-mail goes to the inbox.
+   `mail_received`. The event note is the subject. Without a tag, the same happens if exactly one
+   active application fits the sender's domain (see the inbox suggestion below) and the sender is
+   not a user; otherwise the e-mail goes to the inbox.
 6. If parsing fails, store the raw `.eml` anyway in `_posteingang`, create an inbox entry with
    `parse_error` set and subject "(konnte nicht gelesen werden)", and return 200.
 

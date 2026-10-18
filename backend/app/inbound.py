@@ -66,7 +66,9 @@ def _raw_name(subject: str) -> str:
 
 
 def process(db: Session, raw: bytes, envelope_to: str | None = None) -> models.Email | None:
-    """Store an incoming e-mail, in its application's timeline if it carries a +tag, otherwise in the inbox.
+    """Store an incoming e-mail in its application's timeline, otherwise in the inbox.
+
+    The application is the one of the +tag, or for an untagged e-mail the only active one its sender's domain fits.
 
     Returns None when the same Message-ID was stored before (the worker delivered it twice)."""
     settings = get_settings(db)
@@ -84,7 +86,10 @@ def process(db: Session, raw: bytes, envelope_to: str | None = None) -> models.E
 
     known_tags = {tag for (tag,) in db.query(models.Application.mail_tag)}
     tag = mailparse.find_tag(mail.recipients, known_tags)
-    application = db.query(models.Application).filter_by(mail_tag=tag).one() if tag else None
+    if tag:
+        application = db.query(models.Application).filter_by(mail_tag=tag).one()
+    else:
+        application = _auto_match(db, mail.from_addr)
 
     received = mail.date or now
     day = local_date(received)
@@ -147,11 +152,11 @@ def assign(
     return create_mail_event(db, email, application, event_type)
 
 
-def suggest(db: Session, email: models.Email) -> models.Application | None:
-    """The active application the sender's domain belongs to (contact address or earlier e-mails)."""
-    domain = mailparse.sender_domain(email.from_addr)
+def _candidates(db: Session, sender: str) -> list[models.Application]:
+    """Active applications the sender's domain belongs to (contact address or earlier e-mails)."""
+    domain = mailparse.sender_domain(sender)
     if not domain or domain in FREEMAIL_DOMAINS:
-        return None
+        return []
     pattern = f"%@{domain}"
     candidates = {
         a.id: a
@@ -165,14 +170,25 @@ def suggest(db: Session, email: models.Email) -> models.Application | None:
     for other in earlier:
         if not other.application.archived:
             candidates[other.application.id] = other.application
-    if not candidates:
-        return None
+    return list(candidates.values())
+
+
+def suggest(db: Session, email: models.Email) -> models.Application | None:
+    """The candidate with the most recent activity, as a suggestion for an inbox e-mail."""
 
     def last_activity(application: models.Application):
         last = st.latest(application.events)
         return last.occurred_at if last else application.created_at
 
-    return max(candidates.values(), key=last_activity)
+    return max(_candidates(db, email.from_addr), key=last_activity, default=None)
+
+
+def _auto_match(db: Session, sender: str) -> models.Application | None:
+    """The application for an untagged e-mail, if only one fits; a user's own mail (e.g. forwarded) never matches."""
+    if sender in _user_addresses(db):
+        return None
+    candidates = _candidates(db, sender)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _move_files(email: models.Email, move) -> None:

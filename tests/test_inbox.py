@@ -21,13 +21,15 @@ def test_inbox_needs_login(client):
 
 
 def test_inbox_suggests_application_by_sender_domain(client, admin_headers):
-    migros = create_application(client, admin_headers, "Migros", contact_email="jobs@migros.ch")
+    # Two applications at the same company: no automatic assignment, but a suggestion
+    create_application(client, admin_headers, "Migros", position="Logistiker", contact_email="jobs@migros.ch")
+    migros = create_application(client, admin_headers, "Migros", position="Informatiker", contact_email="it@migros.ch")
     create_application(client, admin_headers, "Coop", contact_email="jobs@coop.ch")
     post_mail(client, build_mail(to="bewerbungen@example.ch", sender="hr@migros.ch"))
     items = inbox(client, admin_headers)
     assert len(items) == 1
     assert items[0]["subject"] == "Ihre Bewerbung"
-    assert items[0]["suggestion"] == {"id": migros["id"], "company": "Migros", "position": ""}
+    assert items[0]["suggestion"] == {"id": migros["id"], "company": "Migros", "position": "Informatiker"}
 
 
 def test_freemail_sender_gets_no_suggestion(client, admin_headers):
