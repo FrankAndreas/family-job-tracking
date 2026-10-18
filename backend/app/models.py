@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -139,3 +139,36 @@ class Settings(Base):
     last_reminder_error = Column(Text)
     last_inbound_at = Column(DateTime)
     last_inbound_error = Column(Text)
+
+
+class SuggestionStatus(str, enum.Enum):
+    OPEN = "open"
+    APPLIED = "applied"
+    DECLINED = "declined"
+
+
+class Suggestion(Base):
+    """A link to an open apprenticeship that someone suggests applying for."""
+
+    __tablename__ = "suggestions"
+
+    id = Column(Integer, primary_key=True)
+    url = Column(String(500), nullable=False)
+    url_key = Column(String(500), nullable=False, index=True)  # suggestions.normalize_url(url)
+    company = Column(String(200), default="", nullable=False)
+    position = Column(String(200), default="", nullable=False)
+    location = Column(String(200), default="", nullable=False)
+    deadline = Column(Date)
+    note = Column(Text, default="", nullable=False)
+    status = Column(String(20), default=SuggestionStatus.OPEN.value, nullable=False)
+    decline_reason = Column(Text, default="", nullable=False)
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="SET NULL"))
+    source = Column(String(10), default="app", nullable=False)  # "app" or "mail"
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    decided_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at = Column(DateTime)
+
+    application = relationship("Application")
+    creator = relationship("User", foreign_keys=[created_by])
+    decider = relationship("User", foreign_keys=[decided_by])
