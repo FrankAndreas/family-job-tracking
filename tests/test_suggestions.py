@@ -183,3 +183,69 @@ def test_dashboard_counts_open_suggestions(client, admin_headers):
     declined = post_suggestion(client, admin_headers, "https://jobs.ch/2")
     client.post(f"/api/suggestions/{declined['id']}/decline", json={}, headers=admin_headers)
     assert client.get("/api/dashboard", headers=admin_headers).json()["suggestion_count"] == 1
+
+
+SUGGESTION_ADDRESS = "bewerbungen+vorschlag@example.ch"
+
+
+@pytest.fixture
+def inbound(monkeypatch):
+    monkeypatch.setenv("INBOUND_SECRET", INBOUND_SECRET)
+
+
+def test_mail_from_a_user_creates_suggestions(client, admin_headers, inbound, db):
+    create_user(client, admin_headers, "Papa", email="papa@example.ch")
+    raw = build_mail(
+        sender="Papa <papa@example.ch>",
+        to=SUGGESTION_ADDRESS,
+        subject="Fwd: Lehrstelle Informatiker EFZ",
+        body="Schau mal https://www.yousty.ch/x?utm_source=share",
+    )
+    response = post_mail(client, raw)
+    assert response.json()["status"] == "suggestions"
+    s = db.query(models.Suggestion).one()
+    assert (s.url, s.position, s.source) == ("https://www.yousty.ch/x?utm_source=share", "Lehrstelle Informatiker EFZ", "mail")
+    assert s.creator.name == "Papa"
+    assert db.query(models.Email).count() == 0
+
+
+def test_mail_with_several_links_and_duplicates(client, admin_headers, inbound, db):
+    create_user(client, admin_headers, "Papa", email="papa@example.ch")
+    post_suggestion(client, admin_headers, "https://jobs.ch/1")
+    links = " ".join(f"https://yousty.ch/{i}" for i in range(12))
+    raw = build_mail(sender="papa@example.ch", to=SUGGESTION_ADDRESS, subject="Ideen", body=f"https://jobs.ch/1/ {links}")
+    ids = post_mail(client, raw).json()["suggestion_ids"]
+    assert len(ids) == 9  # 10 links read, the first is a duplicate
+    new = db.query(models.Suggestion).filter(models.Suggestion.source == "mail").all()
+    assert all(s.position == "" for s in new)  # several links: the subject says nothing about each
+
+
+def test_html_only_mail_uses_the_links_behind_the_text(client, admin_headers, inbound, db):
+    create_user(client, admin_headers, "Papa", email="papa@example.ch")
+    raw = build_mail(
+        sender="papa@example.ch",
+        to=SUGGESTION_ADDRESS,
+        body=None,
+        html='<p><a href="https://www.yousty.ch/lehrstelle/42">Lehrstelle ansehen</a></p>',
+    )
+    assert post_mail(client, raw).json()["status"] == "suggestions"
+    assert db.query(models.Suggestion).one().url == "https://www.yousty.ch/lehrstelle/42"
+
+
+def test_bcc_to_the_suggestion_address_counts(client, admin_headers, inbound, db):
+    create_user(client, admin_headers, "Papa", email="papa@example.ch")
+    raw = build_mail(sender="papa@example.ch", to="sohn@example.ch", body="https://yousty.ch/a")
+    assert post_mail(client, raw, envelope_to=SUGGESTION_ADDRESS).json()["status"] == "suggestions"
+
+
+@pytest.mark.parametrize(
+    "sender, body",
+    [("fremd@spam.example", "https://yousty.ch/a"), ("papa@example.ch", "Keine Links hier")],
+)
+def test_other_suggestion_mails_land_in_the_inbox(client, admin_headers, inbound, db, sender, body):
+    create_user(client, admin_headers, "Papa", email="papa@example.ch")
+    response = post_mail(client, build_mail(sender=sender, to=SUGGESTION_ADDRESS, body=body))
+    assert response.json()["status"] == "stored"
+    assert response.json()["application_id"] is None
+    assert db.query(models.Suggestion).count() == 0
+    assert db.query(models.Email).count() == 1

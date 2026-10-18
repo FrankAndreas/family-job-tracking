@@ -33,6 +33,7 @@ class ParsedMail:
     body_text: str
     date: datetime | None  # naive UTC; None if missing or unreadable
     attachments: list[ParsedAttachment] = field(default_factory=list)
+    html_links: list[str] = field(default_factory=list)  # hrefs of the HTML part, for suggestion mails
 
 
 def fallback_message_id(raw: bytes) -> str:
@@ -87,6 +88,28 @@ def html_to_text(html: str) -> str:
     parser.close()
     lines = [re.sub(r"\s+", " ", line).strip() for line in "".join(parser.parts).splitlines()]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+class _LinkCollector(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.links: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            href = dict(attrs).get("href")
+            if href:
+                self.links.append(href.strip())
+
+
+def _html_links(msg: EmailMessage) -> list[str]:
+    part = msg.get_body(preferencelist=("html",))
+    if part is None:
+        return []
+    collector = _LinkCollector()
+    collector.feed(part.get_content())
+    collector.close()
+    return collector.links
 
 
 def _addresses(msg: EmailMessage, *headers: str) -> list[str]:
@@ -148,6 +171,7 @@ def parse(raw: bytes, envelope_to: str | None = None) -> ParsedMail:
             body_text=_body(msg),
             date=_date(msg),
             attachments=_attachments(msg),
+            html_links=_html_links(msg),
         )
     except Exception as exc:
         raise MailParseError(f"{type(exc).__name__}: {exc}") from exc

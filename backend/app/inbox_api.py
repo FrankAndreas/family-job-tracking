@@ -34,6 +34,8 @@ async def receive_mail(request: Request, db: Session = Depends(get_db)):
     email = inbound.process(db, raw, request.headers.get("x-envelope-to"))
     if email is None:
         return {"status": "duplicate"}
+    if isinstance(email, list):
+        return {"status": "suggestions", "suggestion_ids": [s.id for s in email]}
     return {"status": "stored", "email_id": email.id, "application_id": email.application_id}
 
 

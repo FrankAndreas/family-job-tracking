@@ -82,3 +82,19 @@ def extract_links(*texts: str) -> list[str]:
 def clean_subject(subject: str) -> str:
     """A forwarded mail's subject without "Fwd:", "Fw:" or "WG:"."""
     return _FORWARD_PREFIX.sub("", subject).strip()
+
+
+def create_from_mail(db: Session, user: models.User, links: list[str], subject: str) -> list[models.Suggestion]:
+    """A suggestion for each new link (at most MAX_MAIL_LINKS read); the subject names the position if there is one."""
+    known = {key for (key,) in db.query(models.Suggestion.url_key)}
+    created: list[models.Suggestion] = []
+    for link in links[:MAX_MAIL_LINKS]:
+        key = normalize_url(link)
+        if key in known or len(link) > 500:
+            continue
+        known.add(key)
+        created.append(models.Suggestion(url=link, url_key=key, source="mail", created_by=user.id))
+    if len(created) == 1:
+        created[0].position = clean_subject(subject)[:200]
+    db.add_all(created)
+    return created

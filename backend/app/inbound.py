@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from . import files as filestore
-from . import mailparse, models
+from . import mailparse, models, suggestions
 from . import status as st
 from .settings_store import get_settings
 from .timeutil import local_date, utcnow
@@ -65,10 +65,13 @@ def _raw_name(subject: str) -> str:
     return f"mail-{filestore.slugify(subject, lower=False, fallback='ohne-betreff')}.eml"
 
 
-def process(db: Session, raw: bytes, envelope_to: str | None = None) -> models.Email | None:
+def process(
+    db: Session, raw: bytes, envelope_to: str | None = None
+) -> models.Email | list[models.Suggestion] | None:
     """Store an incoming e-mail in its application's timeline, otherwise in the inbox.
 
     The application is the one of the +tag, or for an untagged e-mail the only active one its sender's domain fits.
+    A mail from a user to the +vorschlag address turns its links into suggestions instead (returned as a list).
 
     Returns None when the same Message-ID was stored before (the worker delivered it twice)."""
     settings = get_settings(db)
@@ -83,6 +86,15 @@ def process(db: Session, raw: bytes, envelope_to: str | None = None) -> models.E
     if db.query(models.Email).filter_by(message_id=mail.message_id).first() is not None:
         db.commit()
         return None
+
+    if mailparse.find_tag(mail.recipients, {suggestions.SUGGESTION_TAG}):
+        sender = db.query(models.User).filter(models.User.email == mail.from_addr).first()
+        links = suggestions.extract_links(mail.body_text, *mail.html_links)
+        if sender is not None and links:
+            created = suggestions.create_from_mail(db, sender, links, mail.subject)
+            db.commit()
+            return created
+        # From someone else, or without a link: keep it like any untagged mail
 
     known_tags = {tag for (tag,) in db.query(models.Application.mail_tag)}
     tag = mailparse.find_tag(mail.recipients, known_tags)
