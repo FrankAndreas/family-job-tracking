@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from . import auth, models, schemas, suggestions, views
+from . import auth, models, pagetitle, schemas, suggestions, views
 from .applications_api import new_mail_tag
 from .database import get_db
 from .timeutil import local_date, utcnow
@@ -44,6 +44,12 @@ def create_suggestion(
     db.commit()
     db.refresh(s)
     return _out(s)
+
+
+@router.post("/suggestions/check")
+def check_link(body: schemas.SuggestionCheckIn, db: Session = Depends(get_db)):
+    """Earlier suggestions and applications with this link, and the page's title as a suggested position."""
+    return {"duplicates": suggestions.find_duplicates(db, body.url), "title": pagetitle.fetch_title(body.url)}
 
 
 @router.patch("/suggestions/{suggestion_id}")
