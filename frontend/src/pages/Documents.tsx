@@ -87,12 +87,13 @@ export default function Documents() {
                 <input
                     ref={fileInput}
                     type="file"
-                    accept="application/pdf,image/*,.heic,.heif"
+                    accept=".pdf,.doc,.docx,.odt,.rtf,.jpg,.jpeg,.png,.webp,.heic,.heif"
                     required
                     onChange={(e) => {
                         const chosen = e.target.files?.[0] ?? null;
+                        // Replace a title that still is the previous file's name; keep one typed by hand
+                        if (chosen && (!title || (file && title === stem(file.name)))) setTitle(stem(chosen.name));
                         setFile(chosen);
-                        if (chosen && !title) setTitle(stem(chosen.name));
                     }}
                     className="block w-full text-sm text-slate-300"
                 />

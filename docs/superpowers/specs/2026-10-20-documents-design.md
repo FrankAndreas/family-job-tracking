@@ -62,7 +62,11 @@ lowest position of the new category minus 1.
 (or the upload date) and the extension of the uploaded file, e.g.
 `_unterlagen/zeugnis/2026-07-01_zeugnis_Zeugnis-2-Sek-1-Semester.pdf`. Existing names get `_2`,
 `_3`, … like other files. Built with the existing helpers in `files.py` (`slugify`, `_unique`,
-`_move`). At most 25 MB per file (`MAX_UPLOAD_BYTES`); any file type is accepted.
+`_move`). At most 25 MB per file (`MAX_UPLOAD_BYTES`). Allowed are PDF, Word-type files (`doc`, `docx`,
+`odt`, `rtf`) and photos (`jpg`, `jpeg`, `png`, `webp`, `heic`, `heif`), by extension; anything else
+(HTML, SVG, scripts, no extension) gets 422. The stored content type comes from the extension, not
+from the browser. Word-type files start with `in_dossier = false`. A failed database commit deletes
+a newly written file, or moves a moved file back.
 
 A category change moves the file into the new folder (`_move`); a title or date change does not
 rename it. Deleting a document deletes its file.
@@ -83,8 +87,8 @@ All endpoints need a login.
 - `POST /api/documents/{id}/move` (`direction`: `up` or `down`) → the documents of that category in
   their new order. At the top or bottom: no change.
 - `DELETE /api/documents/{id}` → 204.
-- `GET /api/documents/{id}/file` → the file, with its content type and original file name
-  (`inline`, so PDFs and images open in the browser; the download button saves it).
+- `GET /api/documents/{id}/file` → the file, with its content type and original file name;
+  `inline` for PDFs and images (they open in the browser), `attachment` for everything else.
 - `GET /api/documents/dossier` → preview: `{parts: [{id, title, category, pages}], skipped:
   [{id, title, reason}], pages, size}`.
 - `GET /api/documents/dossier.pdf` → the PDF as `Bewerbungsdossier_<YYYY-MM-DD>.pdf`; 404 if no

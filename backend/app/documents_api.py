@@ -1,3 +1,4 @@
+import os
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -13,6 +14,22 @@ from .timeutil import local_date, utcnow
 router = APIRouter(tags=["documents"], dependencies=[Depends(auth.get_current_user)])
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
+# What can be uploaded, by extension; the type is ours, never the browser's, so an HTML file can't be
+# served as a page that runs scripts in the app
+ALLOWED_TYPES = {
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".odt": "application/vnd.oasis.opendocument.text",
+    ".rtf": "application/rtf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+}
 
 
 def _get(db: Session, document_id: int) -> models.Document:
@@ -54,27 +71,38 @@ async def upload_document(
         issued = date.fromisoformat(issued_on) if issued_on.strip() else None
     except ValueError:
         raise HTTPException(422, "Ungültiges Datum")
+    filename = file.filename or "dokument"
+    content_type = ALLOWED_TYPES.get(os.path.splitext(filename)[1].lower())
+    if content_type is None:
+        raise HTTPException(422, "Erlaubt sind PDF, Word-Dateien (doc, docx, odt, rtf) und Fotos (jpg, png, heic)")
     content = await file.read()
     if not content:
         raise HTTPException(422, "Die Datei ist leer")
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"{file.filename} ist grösser als 25 MB")
-    filename = file.filename or "dokument"
     title = title.strip()[:200] or (filename.rsplit(".", 1)[0] if "." in filename else filename)
+    path = filestore.store_document(category, issued or local_date(utcnow()), title, filename, content)
     d = models.Document(
         category=category,
         title=title,
         issued_on=issued,
         note=note,
+        # Word files can't go into the dossier: start them unticked
+        in_dossier=dossier.kind(content_type, filename) is not None,
         position=_first_position(db, category),
         filename=filename,
-        path=filestore.store_document(category, issued or local_date(utcnow()), title, filename, content),
-        content_type=file.content_type or "application/octet-stream",
+        path=path,
+        content_type=content_type,
         size=len(content),
         created_by=user.id,
     )
     db.add(d)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        filestore.delete(path)  # not saved: don't leave the file behind
+        raise
     db.refresh(d)
     return views.document_out(d)
 
@@ -106,6 +134,7 @@ def update_document(document_id: int, body: schemas.DocumentPatch, db: Session =
     d = _get(db, document_id)
     changes = body.model_dump(exclude_unset=True)
     category = changes.pop("category", None)
+    old_path = d.path
     if category is not None and category != d.category:
         d.position = _first_position(db, category)
         d.path = filestore.move_document(d.path, category)
@@ -116,7 +145,14 @@ def update_document(document_id: int, body: schemas.DocumentPatch, db: Session =
         setattr(d, key, value)
     if changes.get("outdated"):
         d.in_dossier = False
-    db.commit()
+    new_path = d.path
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        if new_path != old_path:
+            filestore.rename(new_path, old_path)  # not saved: put the file back where the database has it
+        raise
     db.refresh(d)
     return views.document_out(d)
 
@@ -154,4 +190,6 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
     path = filestore.absolute(d.path)
     if not path.exists():
         raise HTTPException(404, "Datei fehlt auf dem NAS")
-    return FileResponse(path, media_type=d.content_type, filename=d.filename, content_disposition_type="inline")
+    # Only PDFs and photos open in the browser; anything else is a download
+    disposition = "inline" if dossier.kind(d.content_type, d.filename) else "attachment"
+    return FileResponse(path, media_type=d.content_type, filename=d.filename, content_disposition_type=disposition)

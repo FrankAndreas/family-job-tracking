@@ -42,6 +42,15 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
         if (!window.confirm(`„${doc.title}“ löschen?`)) return;
         run(() => api.delete(`/api/documents/${doc.id}`));
     };
+    // Start from the document as it is now, not from an earlier, abandoned edit
+    const startEdit = () => {
+        setTitle(doc.title);
+        setCategory(doc.category);
+        setIssuedOn(doc.issued_on ?? '');
+        setNote(doc.note);
+        setEditing(true);
+    };
+
     const save = () =>
         run(async () => {
             await api.patch(`/api/documents/${doc.id}`, { title, category, issued_on: issuedOn || null, note });
@@ -81,13 +90,15 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
 
     return (
         <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 p-3">
-            <label className="flex items-center gap-2 text-sm" title="Im Dossier">
+            <label className="flex items-center gap-1 text-xs text-slate-400">
                 <input
                     type="checkbox"
                     checked={doc.in_dossier}
-                    disabled={busy || !doc.dossier_ok}
+                    // A file that can't go into the dossier can still be unticked, never ticked
+                    disabled={busy || (!doc.dossier_ok && !doc.in_dossier)}
                     onChange={(e) => patch({ in_dossier: e.target.checked })}
                 />
+                Im Dossier
             </label>
             <div className="min-w-0 flex-1">
                 <div className={`truncate font-semibold ${doc.outdated ? 'text-slate-500' : ''}`}>{doc.title}</div>
@@ -121,7 +132,7 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
                 >
                     Herunterladen
                 </button>
-                <button type="button" className={SMALL} onClick={() => setEditing(true)}>
+                <button type="button" className={SMALL} onClick={startEdit}>
                     Bearbeiten
                 </button>
                 <button type="button" className={SMALL} disabled={busy} onClick={() => patch({ outdated: !doc.outdated })}>

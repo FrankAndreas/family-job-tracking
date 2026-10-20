@@ -116,6 +116,7 @@ def test_dossier_leaves_out_unticked_and_outdated(client, admin_headers):
 def test_dossier_skips_what_it_cannot_use(client, admin_headers, db):
     add(client, admin_headers, "ok.pdf", pdf_bytes(), "application/pdf", title="OK")
     word = add(client, admin_headers, "cv.docx", b"PK\x03\x04 word", "application/octet-stream", title="Word")
+    client.patch(f"/api/documents/{word['id']}", json={"in_dossier": True}, headers=admin_headers)
     locked = add(client, admin_headers, "l.pdf", pdf_bytes(user_password="geheim"), "application/pdf", title="Gesperrt")
     broken = add(client, admin_headers, "x.pdf", b"%PDF-1.4 kaputt", "application/pdf", title="Kaputt")
     gone = add(client, admin_headers, "g.pdf", pdf_bytes(), "application/pdf", title="Weg")

@@ -203,3 +203,64 @@ def test_move_skips_outdated_documents_shown_apart(client, admin_headers):
         f"/api/documents/{a['id']}/move", json={"direction": "down"}, headers=admin_headers
     ).json()]
     assert [t for t in titles if t != "B"] == ["C", "A"]
+
+
+@pytest.mark.parametrize("name", ["seite.html", "bild.svg", "skript.js", "zeugnis.", "ohne_endung"])
+def test_upload_allows_only_pdf_word_and_photos(client, admin_headers, name):
+    response = upload(client, admin_headers, name=name)
+    assert response.status_code == 422
+    assert "PDF" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("name", ["cv.doc", "cv.docx", "cv.odt", "cv.rtf", "foto.JPG", "foto.heic", "x.pdf"])
+def test_upload_accepts_the_allowed_types(client, admin_headers, name):
+    assert upload(client, admin_headers, name=name).status_code == 201
+
+
+def test_type_comes_from_the_extension_not_the_browser(client, admin_headers):
+    d = client.post(
+        "/api/documents",
+        data={"category": "cv"},
+        files={"file": ("cv.docx", b"PK\x03\x04", "text/html")},
+        headers=admin_headers,
+    ).json()
+    assert d["content_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    response = client.get(f"/api/documents/{d['id']}/file", headers=admin_headers)
+    assert response.headers["content-type"].startswith("application/vnd.openxmlformats")
+    assert response.headers["content-disposition"].startswith("attachment")
+
+
+def test_word_file_starts_outside_the_dossier(client, admin_headers):
+    d = uploaded(client, admin_headers, name="cv.docx", category="cv")
+    assert (d["in_dossier"], d["dossier_ok"]) == (False, False)
+    assert uploaded(client, admin_headers, name="z.pdf")["in_dossier"] is True
+
+
+def test_failed_save_leaves_no_file_behind(client, admin_headers, monkeypatch):
+    from sqlalchemy.orm import Session
+
+    def broken_commit(self):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(Session, "commit", broken_commit)
+    with pytest.raises(RuntimeError):
+        upload(client, admin_headers)
+    folder = config.files_dir() / files.DOCUMENTS_FOLDER
+    assert not folder.exists() or not any(p.is_file() for p in folder.rglob("*"))
+
+
+def test_failed_category_change_puts_the_file_back(client, admin_headers, db, monkeypatch):
+    from sqlalchemy.orm import Session
+
+    d = uploaded(client, admin_headers, category="other")
+    path = config.files_dir() / db.get(models.Document, d["id"]).path
+    original = Session.commit
+
+    def broken_commit(self):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(Session, "commit", broken_commit)
+    with pytest.raises(RuntimeError):
+        client.patch(f"/api/documents/{d['id']}", json={"category": "letter"}, headers=admin_headers)
+    monkeypatch.setattr(Session, "commit", original)
+    assert path.exists()
