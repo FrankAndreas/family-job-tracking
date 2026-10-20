@@ -14,6 +14,9 @@ and see everything.
 - **Vorschläge:** anyone posts a link to an open apprenticeship (in the app, or by mailing it to
   `bewerbungen+vorschlag@your-domain`); the page title fills in the position, duplicates are
   flagged, and "Bewerben" turns a suggestion into an application.
+- **Unterlagen:** school reports, certificates and tests, CV and cover letter in one place, by
+  category; one click builds the application dossier as a single PDF in the usual order (photos
+  from the phone become A4 pages).
 - **Daily reminder** by e-mail (via Resend) when a follow-up is due, a suggestion is new or its
   deadline is near.
 

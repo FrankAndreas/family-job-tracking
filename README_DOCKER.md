@@ -64,6 +64,8 @@ Everything worth keeping is in `data/`:
 - `files/<firma>/`: attachments and the original e-mails (`.eml`), named
   `<date>_<firma>_<original name>`
 - `files/_posteingang/`: files of e-mails that are not assigned yet
+- `files/_unterlagen/<kategorie>/`: the documents of the page **Unterlagen** (reports, certificates,
+  CV, cover letter), named `<date>_<kategorie>_<title>`
 
 Include `data/` in your Hyper Backup task. **Einstellungen → Daten exportieren** downloads everything
 as a ZIP: `uebersicht.csv` (one row per application with status and dates), `zeitleiste.csv` (all
