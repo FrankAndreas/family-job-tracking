@@ -215,3 +215,14 @@ def test_export_documents(client, admin_headers):
     assert row["Pfad"] in archive.namelist()
     raw_header, *_ = read_csv(archive, "documents.csv")
     assert "in_dossier" in raw_header
+
+
+def test_export_overview_names_the_kind_of_rejection_and_its_reason(client, admin_headers):
+    app = create_application(client, admin_headers, "Migros")
+    add_event(client, admin_headers, app["id"], "no_position", note="Bilden 2027 nicht aus")
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    header, *rows = read_csv(archive, "uebersicht.csv")
+    row = dict(zip(header, rows[0]))
+    assert (row["Status"], row["Grund"]) == ("Keine Lehrstelle", "Bilden 2027 nicht aus")
+    t_header, *t_rows = read_csv(archive, "zeitleiste.csv")
+    assert dict(zip(t_header, t_rows[0]))["Ereignis"] == "Keine Lehrstelle angeboten"

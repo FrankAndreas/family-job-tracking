@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import api, { downloadFile, errorMessage } from '../api';
-import { EVENT_LABELS, formatDateTime, formatSize } from '../labels';
+import { EVENT_LABELS, EVENT_TYPES, REASON_EVENTS, formatDateTime, formatSize } from '../labels';
 import { useToast } from '../ToastContext';
-import type { Attachment, TimelineEvent } from '../types';
+import type { Attachment, EventType, TimelineEvent } from '../types';
+import { INPUT } from '../ui';
 
 function AttachmentList({ attachments, onDelete }: { attachments: Attachment[]; onDelete: (a: Attachment) => void }) {
     const toast = useToast();
@@ -48,7 +49,7 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
             await action();
             onChanged();
         } catch (e) {
-            toast(errorMessage(e, 'Löschen fehlgeschlagen'));
+            toast(errorMessage(e, 'Speichern fehlgeschlagen'));
         } finally {
             setBusy(false);
         }
@@ -59,6 +60,19 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
             : 'Dieses Ereignis löschen?';
         if (window.confirm(question)) run(() => api.delete(`/api/events/${event.id}`));
     };
+    const [editing, setEditing] = useState(false);
+    const [type, setType] = useState<EventType>(event.type);
+    const [note, setNote] = useState(event.note);
+    const startEdit = () => {
+        setType(event.type);
+        setNote(event.note);
+        setEditing(true);
+    };
+    const save = () =>
+        run(async () => {
+            await api.patch(`/api/events/${event.id}`, { type, note });
+            setEditing(false);
+        });
     const deleteAttachment = (a: Attachment) => {
         if (window.confirm(`${a.filename} löschen?`)) run(() => api.delete(`/api/attachments/${a.id}`));
     };
@@ -75,13 +89,48 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                 <button
                     type="button"
                     disabled={busy}
+                    onClick={startEdit}
+                    className="ml-auto text-xs text-slate-500 hover:text-blue-300"
+                >
+                    bearbeiten
+                </button>
+                <button
+                    type="button"
+                    disabled={busy}
                     onClick={deleteEvent}
-                    className="ml-auto text-xs text-slate-500 hover:text-red-400"
+                    className="text-xs text-slate-500 hover:text-red-400"
                 >
                     löschen
                 </button>
             </div>
-            {event.note && <p className="mt-1 whitespace-pre-wrap text-sm">{event.note}</p>}
+            {editing ? (
+                <div className="mt-2 space-y-2">
+                    <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={INPUT}>
+                        {EVENT_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                                {EVENT_LABELS[t]}
+                            </option>
+                        ))}
+                    </select>
+                    <textarea
+                        rows={2}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder={REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}
+                        className={INPUT}
+                    />
+                    <div className="flex gap-3 text-sm">
+                        <button type="button" disabled={busy} onClick={save} className="text-blue-300 hover:underline">
+                            Speichern
+                        </button>
+                        <button type="button" onClick={() => setEditing(false)} className="text-slate-400 hover:underline">
+                            Abbrechen
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                event.note && <p className="mt-1 whitespace-pre-wrap text-sm">{event.note}</p>
+            )}
             <AttachmentList attachments={event.attachments} onDelete={deleteAttachment} />
             {email && (
                 <details className="mt-2 rounded-lg bg-slate-800/50 p-2 text-sm">

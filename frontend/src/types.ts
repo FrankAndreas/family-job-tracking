@@ -1,7 +1,7 @@
 export type Status = 'draft' | 'open' | 'in_contact' | 'closed_offer' | 'closed_rejection' | 'closed_withdrawn';
 export type EventType =
     | 'sent' | 'followed_up' | 'reply_received' | 'mail_sent' | 'mail_received' | 'call'
-    | 'interview' | 'trial' | 'offer' | 'rejection' | 'withdrawn' | 'note';
+    | 'interview' | 'trial' | 'offer' | 'rejection' | 'no_position' | 'position_filled' | 'withdrawn' | 'note';
 export type Channel = 'email' | 'portal' | 'post' | 'in_person' | 'other';
 
 export interface User {
@@ -49,6 +49,9 @@ export interface ApplicationSummary {
     position: string;
     location: string;
     status: Status;
+    // The event that closed it (e.g. 'position_filled' for closed_rejection) and its note as the reason
+    closed_by: EventType | null;
+    closed_note: string | null;
     archived: boolean;
     due: boolean;
     last_event_type: EventType | null;

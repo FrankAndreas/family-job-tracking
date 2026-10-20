@@ -186,3 +186,34 @@ def test_deleting_user_keeps_their_events(client, admin_headers):
     assert detail["created_by_name"] is None
     assert len(detail["events"]) == 1
     assert detail["events"][0]["created_by_name"] is None
+
+
+def test_closing_kind_and_reason_in_list_and_detail(client, admin_headers):
+    app = create_application(client, admin_headers, "Migros")
+    add_event(client, admin_headers, app["id"], "sent", "2026-10-01T10:00:00+02:00")
+    add_event(client, admin_headers, app["id"], "position_filled", "2026-10-05T10:00:00+02:00", note="Stelle seit Juli besetzt")
+    detail = client.get(f"/api/applications/{app['id']}", headers=admin_headers).json()
+    assert (detail["status"], detail["closed_by"], detail["closed_note"]) == (
+        "closed_rejection", "position_filled", "Stelle seit Juli besetzt"
+    )
+    item = client.get("/api/applications", headers=admin_headers).json()[0]
+    assert (item["closed_by"], item["closed_note"]) == ("position_filled", "Stelle seit Juli besetzt")
+    assert client.get("/api/dashboard", headers=admin_headers).json()["counts"]["closed_rejection"] == 1
+
+
+def test_open_application_has_no_closing_kind(client, admin_headers):
+    app = create_application(client, admin_headers, "Coop")
+    add_event(client, admin_headers, app["id"], "sent")
+    detail = client.get(f"/api/applications/{app['id']}", headers=admin_headers).json()
+    assert (detail["closed_by"], detail["closed_note"]) == (None, None)
+
+
+def test_an_old_rejection_can_be_turned_into_another_kind(client, admin_headers):
+    app = create_application(client, admin_headers, "Migros")
+    event = add_event(client, admin_headers, app["id"], "rejection")
+    response = client.patch(
+        f"/api/events/{event['id']}", json={"type": "no_position", "note": "Kein Lehrbetrieb"}, headers=admin_headers
+    )
+    assert response.status_code == 200, response.text
+    detail = client.get(f"/api/applications/{app['id']}", headers=admin_headers).json()
+    assert (detail["closed_by"], detail["closed_note"]) == ("no_position", "Kein Lehrbetrieb")

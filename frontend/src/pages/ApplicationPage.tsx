@@ -99,7 +99,12 @@ export default function ApplicationPage() {
                     <h1 className="text-2xl font-bold">{application.company}</h1>
                     <p className="text-slate-400">{application.position || 'Stelle nicht angegeben'}</p>
                 </div>
-                <StatusBadge status={application.status} />
+                <div className="text-right">
+                    <StatusBadge status={application.status} closedBy={application.closed_by} />
+                    {application.closed_note && (
+                        <p className="mt-1 max-w-xs text-sm italic text-slate-400">{application.closed_note}</p>
+                    )}
+                </div>
             </div>
 
             {application.mail_address ? (

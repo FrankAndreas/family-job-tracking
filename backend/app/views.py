@@ -52,12 +52,16 @@ def summary(application: models.Application, followup_days: int, now: datetime) 
     events = application.events
     status = st.derive_status(events)
     last = st.latest(events)
+    closing = st.closing_event(events)
     return {
         "id": application.id,
         "company": application.company,
         "position": application.position,
         "location": application.location,
         "status": status,
+        # Which closing event, e.g. "position_filled" for a closed_rejection, and its note as the reason
+        "closed_by": closing.type if closing else None,
+        "closed_note": (closing.note or None) if closing else None,
         "archived": application.archived,
         "due": st.is_due(status, application.archived, events, followup_days, now),
         "last_event_type": last.type if last else None,

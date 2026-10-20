@@ -18,6 +18,8 @@ class EventType(str, enum.Enum):
     TRIAL = "trial"
     OFFER = "offer"
     REJECTION = "rejection"
+    NO_POSITION = "no_position"  # the company offers no apprenticeship (in this trade or year)
+    POSITION_FILLED = "position_filled"
     WITHDRAWN = "withdrawn"
     NOTE = "note"
 

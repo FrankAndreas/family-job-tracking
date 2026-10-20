@@ -32,7 +32,8 @@ function ApplicationRow({ item }: { item: ApplicationSummary }) {
                 </div>
             </div>
             <div className="text-right text-xs text-slate-400">
-                <StatusBadge status={item.status} />
+                <StatusBadge status={item.status} closedBy={item.closed_by} />
+                {item.closed_note && <div className="mt-1 max-w-48 truncate italic">{item.closed_note}</div>}
                 <div className="mt-1">
                     {item.last_event_type
                         ? `${EVENT_LABELS[item.last_event_type]}, ${formatDate(item.last_event_at)}`

@@ -82,7 +82,8 @@ docker-compose.yml, .env.example, README.md, README_DOCKER.md
 - `type` is one of: `sent` (Bewerbung gesendet), `followed_up` (Nachgefragt), `reply_received`
   (Antwort erhalten), `mail_sent` (Mail gesendet), `mail_received` (Mail erhalten), `call`
   (Telefonat), `interview` (Vorstellungsgespräch), `trial` (Schnupperlehre/Probetag), `offer`
-  (Zusage), `rejection` (Absage), `withdrawn` (Zurückgezogen), `note` (Notiz)
+  (Zusage), `rejection` (Absage), `no_position` (Keine Lehrstelle angeboten), `position_filled` (Bereits vergeben),
+  `withdrawn` (Zurückgezogen), `note` (Notiz)
 
 `emails`
 - `id`, `message_id` (unique; for deduplication), `from_addr`, `to_addrs`, `subject`,
@@ -106,6 +107,9 @@ The status of an application is computed from its events, never stored:
 
 - `closed_offer` / `closed_rejection` / `closed_withdrawn` if the latest of `offer`, `rejection`,
   `withdrawn` exists (the latest closing event wins).
+  `no_position` and `position_filled` also give `closed_rejection`; the API adds `closed_by` (the closing
+  event's type) and `closed_note` (its note, shown as the reason), so the UI labels the status "Absage",
+  "Keine Lehrstelle" or "Vergeben".
 - otherwise `in_contact` if any `reply_received`, `mail_received`, `call`, `interview` or `trial`
   event exists.
 - otherwise `open` if a `sent` event exists.

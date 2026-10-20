@@ -15,6 +15,8 @@ const MAIL_EVENT_TYPES: EventType[] = [
     'interview',
     'offer',
     'rejection',
+    'no_position',
+    'position_filled',
 ];
 
 // "hr.migros.ch" -> "Migros", as a starting point for a new application

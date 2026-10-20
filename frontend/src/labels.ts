@@ -29,11 +29,21 @@ export const EVENT_LABELS: Record<EventType, string> = {
     trial: 'Schnupperlehre/Probetag',
     offer: 'Zusage',
     rejection: 'Absage',
+    no_position: 'Keine Lehrstelle angeboten',
+    position_filled: 'Bereits vergeben',
     withdrawn: 'Zurückgezogen',
     note: 'Notiz',
 };
 
 export const EVENT_TYPES = Object.keys(EVENT_LABELS) as EventType[];
+
+// Events whose note is the reason, and how the status names each kind of rejection
+export const REASON_EVENTS: EventType[] = ['rejection', 'no_position', 'position_filled', 'withdrawn'];
+export const REJECTION_LABELS: Partial<Record<EventType, string>> = {
+    rejection: 'Absage',
+    no_position: 'Keine Lehrstelle',
+    position_filled: 'Vergeben',
+};
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
     email: 'E-Mail',

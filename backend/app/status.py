@@ -4,7 +4,14 @@ from typing import Iterable, Protocol
 STATUSES = ("draft", "open", "in_contact", "closed_offer", "closed_rejection", "closed_withdrawn")
 ACTIVE_STATUSES = ("open", "in_contact")
 
-_CLOSING = {"offer": "closed_offer", "rejection": "closed_rejection", "withdrawn": "closed_withdrawn"}
+# "No apprenticeship offered" and "already filled" end an application like a rejection; closing_event() tells them apart
+_CLOSING = {
+    "offer": "closed_offer",
+    "rejection": "closed_rejection",
+    "no_position": "closed_rejection",
+    "position_filled": "closed_rejection",
+    "withdrawn": "closed_withdrawn",
+}
 _CONTACT = {"reply_received", "mail_received", "call", "interview", "trial"}
 
 
@@ -15,6 +22,11 @@ class EventLike(Protocol):
 
 def latest(events: Iterable[EventLike]) -> EventLike | None:
     return max(events, key=lambda e: e.occurred_at, default=None)
+
+
+def closing_event(events: Iterable[EventLike]) -> EventLike | None:
+    """The latest event that closed the application (offer, rejection and its kinds, withdrawn), if any."""
+    return latest(e for e in events if e.type in _CLOSING)
 
 
 def derive_status(events: Iterable[EventLike]) -> str:

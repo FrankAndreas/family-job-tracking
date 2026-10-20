@@ -48,3 +48,16 @@ def test_latest_and_days_since():
     assert st.latest(events).type == "followed_up"
     assert st.latest([]) is None
     assert st.days_since(NOW - timedelta(days=2, hours=3), NOW) == 2
+
+
+def test_no_position_and_filled_close_like_a_rejection():
+    for closing in ("no_position", "position_filled"):
+        events = [ev("sent", 9), ev(closing, 2)]
+        assert st.derive_status(events) == "closed_rejection"
+        assert st.closing_event(events).type == closing
+        assert not st.is_due("closed_rejection", False, events, 1, NOW)
+
+
+def test_closing_event_is_the_latest_closing_one():
+    assert st.closing_event([ev("sent", 5)]) is None
+    assert st.closing_event([ev("rejection", 5), ev("offer", 1), ev("note", 0)]).type == "offer"

@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import api, { errorMessage } from '../api';
-import { EVENT_LABELS, EVENT_TYPES } from '../labels';
+import { EVENT_LABELS, EVENT_TYPES, REASON_EVENTS } from '../labels';
 import { useToast } from '../ToastContext';
 import type { EventType } from '../types';
 import { BUTTON, BUTTON_SECONDARY, INPUT } from '../ui';
@@ -88,8 +88,14 @@ export default function EventForm({ applicationId, defaultType, onSaved }: Props
                 </label>
             </div>
             <label className="block text-sm">
-                <span className="mb-1 block text-slate-400">Notiz</span>
-                <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className={INPUT} />
+                <span className="mb-1 block text-slate-400">{REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}</span>
+                <textarea
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder={REASON_EVENTS.includes(type) ? 'z. B. Noten zu tief, nächstes Jahr wieder melden' : ''}
+                    className={INPUT}
+                />
             </label>
             <div className="text-sm">
                 <input

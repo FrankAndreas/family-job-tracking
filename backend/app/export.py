@@ -45,9 +45,13 @@ EVENT_LABELS = {
     "trial": "Schnupperlehre/Probetag",
     "offer": "Zusage",
     "rejection": "Absage",
+    "no_position": "Keine Lehrstelle angeboten",
+    "position_filled": "Bereits vergeben",
     "withdrawn": "Zurückgezogen",
     "note": "Notiz",
 }
+# The status label of a rejection names its kind
+REJECTION_LABELS = {"rejection": "Absage", "no_position": "Keine Lehrstelle", "position_filled": "Vergeben"}
 CHANNEL_LABELS = {
     "email": "E-Mail",
     "portal": "Portal",
@@ -91,7 +95,7 @@ def _overview(applications: list[models.Application], followup_days: int) -> str
     header = [
         "Firma", "Stelle", "Ort", "Status", "Kanal", "Beworben am", "Letztes Ereignis", "Letzter Kontakt",
         "Nachfassen ab", "Ereignisse", "Kontaktperson", "Kontakt E-Mail", "Kontakt Telefon", "Inserat",
-        "Archiviert", "Notizen",
+        "Archiviert", "Notizen", "Grund",
     ]
     rows = []
     for a in applications:
@@ -99,15 +103,19 @@ def _overview(applications: list[models.Application], followup_days: int) -> str
         status = st.derive_status(events)
         last = st.latest(events)
         sent = min((e.occurred_at for e in events if e.type == "sent"), default=None)
+        closing = st.closing_event(events)
+        label = STATUS_LABELS.get(status, status)
+        if status == "closed_rejection" and closing is not None:
+            label = REJECTION_LABELS.get(closing.type, label)
         follow_up = None
         if last and not a.archived and status in st.ACTIVE_STATUSES:
             follow_up = last.occurred_at + timedelta(days=followup_days)
         rows.append([
-            a.company, a.position, a.location, STATUS_LABELS.get(status, status),
+            a.company, a.position, a.location, label,
             CHANNEL_LABELS.get(a.channel, a.channel), _date(sent),
             EVENT_LABELS.get(last.type, last.type) if last else "", _date(last.occurred_at if last else None),
             _date(follow_up), len(events), a.contact_name, a.contact_email, a.contact_phone, a.posting_url,
-            _yes_no(a.archived), a.notes,
+            _yes_no(a.archived), a.notes, closing.note if closing else "",
         ])
     return _csv(header, rows)
 
