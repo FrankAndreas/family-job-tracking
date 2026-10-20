@@ -142,3 +142,42 @@ def test_empty_dossier(client, admin_headers):
 
 def test_dossier_needs_login(client):
     assert client.get("/api/documents/dossier.pdf").status_code == 401
+
+
+def test_an_oversized_photo_is_skipped_and_the_rest_still_works(client, admin_headers, monkeypatch):
+    # Pillow refuses images above 2 × MAX_IMAGE_PIXELS (a 200 MP phone photo) with DecompressionBombError
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+    add(client, admin_headers, "ok.pdf", pdf_bytes(), "application/pdf", title="OK")
+    big = add(client, admin_headers, "big.png", image_bytes(size=(400, 300)), "image/png", title="Riesig")
+    info = preview(client, admin_headers)
+    assert [p["title"] for p in info["parts"]] == ["OK"]
+    assert info["skipped"][0]["id"] == big["id"]
+    assert client.get("/api/documents/dossier.pdf", headers=admin_headers).status_code == 200
+
+
+def test_a_pdf_failing_half_way_leaves_no_pages_behind(client, admin_headers, monkeypatch):
+    add(client, admin_headers, "ok.pdf", pdf_bytes(1), "application/pdf", title="OK")
+    add(client, admin_headers, "bad.pdf", pdf_bytes(3), "application/pdf", title="Halb")
+    original = PdfWriter.append
+
+    def append_then_fail(self, reader, *args, **kwargs):
+        original(self, reader, *args, **kwargs)
+        if len(reader.pages) == 3:
+            raise IndexError("broken object")
+
+    monkeypatch.setattr(PdfWriter, "append", append_then_fail)
+    info = preview(client, admin_headers)
+    assert [p["title"] for p in info["parts"]] == ["OK"]
+    pdf = client.get("/api/documents/dossier.pdf", headers=admin_headers).content
+    assert len(PdfReader(io.BytesIO(pdf)).pages) == info["pages"] == 1
+
+
+def test_images_are_converted_once_while_unchanged(client, admin_headers, monkeypatch):
+    add(client, admin_headers, "a.png", image_bytes(), "image/png")
+    calls = []
+    original = dossier.image_page
+    monkeypatch.setattr(dossier, "image_page", lambda data: calls.append(1) or original(data))
+    preview(client, admin_headers)
+    preview(client, admin_headers)
+    client.get("/api/documents/dossier.pdf", headers=admin_headers)
+    assert len(calls) == 1

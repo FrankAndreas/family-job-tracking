@@ -192,3 +192,14 @@ def test_delete_removes_the_file(client, admin_headers, db):
 
 def test_unknown_document_is_404(client, admin_headers):
     assert client.patch("/api/documents/99", json={}, headers=admin_headers).status_code == 404
+
+
+def test_move_skips_outdated_documents_shown_apart(client, admin_headers):
+    c = uploaded(client, admin_headers, title="C")
+    b = uploaded(client, admin_headers, title="B")
+    a = uploaded(client, admin_headers, title="A")  # order A, B, C
+    client.patch(f"/api/documents/{b['id']}", json={"outdated": True}, headers=admin_headers)
+    titles = [x["title"] for x in client.post(
+        f"/api/documents/{a['id']}/move", json={"direction": "down"}, headers=admin_headers
+    ).json()]
+    assert [t for t in titles if t != "B"] == ["C", "A"]

@@ -29,12 +29,13 @@ export default function Documents() {
     const load = useCallback(() => setVersion((v) => v + 1), []);
 
     useEffect(() => {
-        Promise.all([api.get<AppDocument[]>('/api/documents'), api.get<DossierPreview>('/api/documents/dossier')])
-            .then(([list, dossier]) => {
-                setDocs(list.data);
-                setPreview(dossier.data);
-            })
+        // Loaded apart: a dossier that can't be built must never hide the list
+        api.get<AppDocument[]>('/api/documents')
+            .then((list) => setDocs(list.data))
             .catch((e) => toast(errorMessage(e)));
+        api.get<DossierPreview>('/api/documents/dossier')
+            .then((dossier) => setPreview(dossier.data))
+            .catch(() => setPreview(null));
     }, [version, toast]);
 
     const submit = async (event: FormEvent) => {
@@ -177,8 +178,8 @@ export default function Documents() {
                                 <DocumentRow
                                     key={d.id}
                                     doc={d}
-                                    first={inCategory[0].id === d.id}
-                                    last={inCategory[inCategory.length - 1].id === d.id}
+                                    first={current[0].id === d.id}
+                                    last={current[current.length - 1].id === d.id}
                                     onChanged={load}
                                 />
                             ))}
@@ -198,8 +199,8 @@ export default function Documents() {
                                             <DocumentRow
                                                 key={d.id}
                                                 doc={d}
-                                                first={inCategory[0].id === d.id}
-                                                last={inCategory[inCategory.length - 1].id === d.id}
+                                                first={outdated[0].id === d.id}
+                                                last={outdated[outdated.length - 1].id === d.id}
                                                 onChanged={load}
                                             />
                                         ))}

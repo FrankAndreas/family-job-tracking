@@ -125,7 +125,8 @@ def update_document(document_id: int, body: schemas.DocumentPatch, db: Session =
 def move_document(document_id: int, body: schemas.DocumentMoveIn, db: Session = Depends(get_db)):
     """Swap with the neighbour in the same category; at the top or bottom nothing changes."""
     d = _get(db, document_id)
-    siblings = [x for x in ordered(db) if x.category == d.category]
+    # Current and outdated documents are listed apart: move only among those shown together
+    siblings = [x for x in ordered(db) if x.category == d.category and x.outdated == d.outdated]
     index = siblings.index(d)
     other = index - 1 if body.direction == "up" else index + 1
     if 0 <= other < len(siblings):
