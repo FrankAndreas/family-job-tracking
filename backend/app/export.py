@@ -20,6 +20,7 @@ TABLES = [
     ("emails", models.Email),
     ("attachments", models.Attachment),
     ("suggestions", models.Suggestion),
+    ("documents", models.Document),
 ]
 # Login secrets stay out of the export
 EXCLUDED_COLUMNS = {"pin_hash", "failed_logins", "locked_until"}
@@ -143,6 +144,25 @@ def _suggestions(db: Session) -> str:
     return _csv(header, rows)
 
 
+def _documents(db: Session) -> str:
+    header = [
+        "Kategorie", "Titel", "Datum", "Datei", "Grösse (KB)", "Im Dossier", "Veraltet", "Hochgeladen von",
+        "Hochgeladen am", "Pfad",
+    ]
+    rank = {category: i for i, category in enumerate(models.CATEGORY_ORDER)}
+    documents = sorted(db.query(models.Document), key=lambda d: (rank.get(d.category, 99), d.position, d.id))
+    rows = [
+        [
+            models.CATEGORY_LABELS.get(d.category, d.category), d.title,
+            d.issued_on.strftime("%d.%m.%Y") if d.issued_on else "", d.filename, round(d.size / 1024),
+            _yes_no(d.in_dossier), _yes_no(d.outdated), d.creator.name if d.creator else "",
+            _datetime(d.created_at), f"files/{d.path}",
+        ]
+        for d in documents
+    ]
+    return _csv(header, rows)
+
+
 def build_zip(db: Session) -> Path:
     """Readable overview and timeline, all tables as CSV and the files folder, in a temporary ZIP the caller deletes."""
     fd, name = tempfile.mkstemp(suffix=".zip")
@@ -158,6 +178,7 @@ def build_zip(db: Session) -> Path:
         archive.writestr("uebersicht.csv", _overview(applications, followup_days))
         archive.writestr("zeitleiste.csv", _timeline(applications))
         archive.writestr("vorschlaege.csv", _suggestions(db))
+        archive.writestr("unterlagen.csv", _documents(db))
         for table, model in TABLES:
             columns = [c.name for c in model.__table__.columns if c.name not in EXCLUDED_COLUMNS]
             rows = ([_cell(getattr(row, column)) for column in columns] for row in db.query(model).order_by(model.id))

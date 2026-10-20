@@ -196,3 +196,22 @@ def test_inbound_warns_about_users_without_an_address(client, admin_headers, mon
     warnings = integrations(client, admin_headers)["inbound"]["warnings"]
     assert any("Admin, Sohn" in w for w in warnings)
     assert not any("Mama" in w for w in warnings)
+
+
+def test_export_documents(client, admin_headers):
+    client.post(
+        "/api/documents",
+        data={"category": "report", "title": "Zeugnis Sommer", "issued_on": "2026-07-01"},
+        files={"file": ("z.pdf", b"%PDF-1.4 x" * 200, "application/pdf")},
+        headers=admin_headers,
+    )
+    archive = zipfile.ZipFile(io.BytesIO(client.get("/api/export", headers=admin_headers).content))
+    header, *rows = read_csv(archive, "unterlagen.csv")
+    row = dict(zip(header, rows[0]))
+    assert (row["Kategorie"], row["Titel"], row["Datum"]) == ("Zeugnis", "Zeugnis Sommer", "01.07.2026")
+    assert (row["Datei"], row["Grösse (KB)"], row["Im Dossier"], row["Veraltet"]) == ("z.pdf", "2", "Ja", "Nein")
+    assert row["Hochgeladen von"] == "Admin"
+    assert row["Pfad"] == "files/_unterlagen/zeugnis/2026-07-01_zeugnis_Zeugnis-Sommer.pdf"
+    assert row["Pfad"] in archive.namelist()
+    raw_header, *_ = read_csv(archive, "documents.csv")
+    assert "in_dossier" in raw_header
