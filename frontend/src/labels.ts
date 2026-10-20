@@ -1,4 +1,4 @@
-import type { Channel, EventType, Status } from './types';
+import type { Channel, DocumentCategory, EventType, Status } from './types';
 
 export const STATUS_LABELS: Record<Status, string> = {
     draft: 'Entwurf',
@@ -56,3 +56,14 @@ export function formatSize(bytes: number): string {
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+
+// Dossier order
+export const CATEGORY_ORDER: DocumentCategory[] = ['letter', 'cv', 'report', 'certificate', 'other'];
+
+export const CATEGORY_LABELS: Record<DocumentCategory, string> = {
+    letter: 'Motivationsschreiben',
+    cv: 'Lebenslauf',
+    report: 'Zeugnis',
+    certificate: 'Zertifikat/Test',
+    other: 'Andere',
+};

@@ -150,3 +150,29 @@ export interface SuggestionCheck {
     duplicates: SuggestionDuplicate[];
     title: string | null;
 }
+
+export type DocumentCategory = 'letter' | 'cv' | 'report' | 'certificate' | 'other';
+
+export interface AppDocument {
+    id: number;
+    category: DocumentCategory;
+    title: string;
+    issued_on: string | null;
+    note: string;
+    outdated: boolean;
+    in_dossier: boolean;
+    position: number;
+    filename: string;
+    content_type: string;
+    size: number;
+    created_at: string;
+    created_by_name: string | null;
+    dossier_ok: boolean;
+}
+
+export interface DossierPreview {
+    parts: { id: number; title: string; category: DocumentCategory; pages: number }[];
+    skipped: { id: number; title: string; reason: string }[];
+    pages: number;
+    size: number;
+}

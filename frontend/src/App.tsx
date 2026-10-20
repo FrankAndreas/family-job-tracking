@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import Layout from './components/Layout';
 import ApplicationPage from './pages/ApplicationPage';
+import Documents from './pages/Documents';
 import Inbox from './pages/Inbox';
 import Login from './pages/Login';
 import Overview from './pages/Overview';
@@ -34,6 +35,7 @@ export default function App() {
                             <Route path="bewerbungen/:id" element={<ApplicationPage />} />
                             <Route path="vorschlaege" element={<Suggestions />} />
                             <Route path="posteingang" element={<Inbox />} />
+                            <Route path="unterlagen" element={<Documents />} />
                             <Route path="einstellungen" element={<SettingsPage />} />
                         </Route>
                         <Route path="*" element={<Navigate to="/" replace />} />

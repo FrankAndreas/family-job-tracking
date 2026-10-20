@@ -44,4 +44,19 @@ export async function downloadFile(url: string, filename: string): Promise<void>
     setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
+// Open a file that needs the login token in a new tab; the tab is opened first, so popup blockers allow it
+export async function openFile(url: string): Promise<void> {
+    const tab = window.open('', '_blank');
+    try {
+        const response = await api.get<Blob>(url, { responseType: 'blob' });
+        const href = URL.createObjectURL(response.data);
+        if (tab) tab.location.href = href;
+        else window.location.href = href;
+        setTimeout(() => URL.revokeObjectURL(href), 60_000);
+    } catch (error) {
+        tab?.close();
+        throw error;
+    }
+}
+
 export default api;

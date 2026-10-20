@@ -55,6 +55,9 @@ export default function Layout() {
                                 <span className="ml-1 rounded-full bg-blue-600 px-2 text-xs text-white">{inboxCount}</span>
                             )}
                         </NavLink>
+                        <NavLink to="/unterlagen" className={linkClass}>
+                            Unterlagen
+                        </NavLink>
                         <NavLink to="/einstellungen" className={linkClass}>
                             Einstellungen
                             {integrationError && (
