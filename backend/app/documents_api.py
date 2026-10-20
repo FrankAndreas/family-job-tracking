@@ -1,11 +1,11 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from . import auth, models, schemas, views
+from . import auth, dossier, models, schemas, views
 from . import files as filestore
 from .database import get_db
 from .timeutil import local_date, utcnow
@@ -77,6 +77,28 @@ async def upload_document(
     db.commit()
     db.refresh(d)
     return views.document_out(d)
+
+
+@router.get("/documents/dossier")
+def dossier_preview(db: Session = Depends(get_db)):
+    result = dossier.build(ordered(db))
+    return {
+        "parts": result.parts,
+        "skipped": result.skipped,
+        "pages": result.pages,
+        "size": len(result.pdf) if result.pdf else 0,
+    }
+
+
+@router.get("/documents/dossier.pdf")
+def dossier_pdf(db: Session = Depends(get_db)):
+    result = dossier.build(ordered(db))
+    if result.pdf is None:
+        raise HTTPException(404, "Keine Unterlage kann ins Dossier")
+    filename = f"Bewerbungsdossier_{local_date(utcnow()).isoformat()}.pdf"
+    return Response(
+        result.pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 
 @router.patch("/documents/{document_id}")
