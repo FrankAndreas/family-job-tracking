@@ -9,6 +9,8 @@ from . import config
 
 # Unassigned e-mails keep their files here until they are assigned to an application
 INBOX_FOLDER = "_posteingang"
+# The son's application documents, one subfolder per category
+DOCUMENTS_FOLDER = "_unterlagen"
 
 _UMLAUTS = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss"})
 
@@ -107,3 +109,24 @@ def rename(rel_from: str, rel_to: str) -> None:
 
 def delete(rel_path: str) -> None:
     absolute(rel_path).unlink(missing_ok=True)
+
+
+def _document_folder(category: str) -> str:
+    from .models import CATEGORY_FOLDERS
+
+    return CATEGORY_FOLDERS[category]
+
+
+def store_document(category: str, day: date, title: str, original_name: str, content: bytes) -> str:
+    """Save a document as _unterlagen/<folder>/<date>_<folder>_<title>.<ext of the upload>."""
+    folder = _document_folder(category)
+    _stem, ext = safe_filename(original_name)
+    # The title is slugified first, so dots in it can't be taken for the extension
+    name = slugify(title, lower=False, max_len=80, fallback="dokument") + ext
+    return _store(f"{DOCUMENTS_FOLDER}/{folder}", day, folder, name, content)
+
+
+def move_document(rel_path: str, category: str) -> str:
+    """Move a document's file into the folder of its new category."""
+    folder = _document_folder(category)
+    return _move(rel_path, f"{DOCUMENTS_FOLDER}/{folder}", folder)

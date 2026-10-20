@@ -172,3 +172,52 @@ class Suggestion(Base):
     application = relationship("Application")
     creator = relationship("User", foreign_keys=[created_by])
     decider = relationship("User", foreign_keys=[decided_by])
+
+
+class DocumentCategory(str, enum.Enum):
+    LETTER = "letter"
+    CV = "cv"
+    REPORT = "report"
+    CERTIFICATE = "certificate"
+    OTHER = "other"
+
+
+# Dossier order, folder under files/_unterlagen/ and German label of each category
+CATEGORY_ORDER = [c.value for c in DocumentCategory]
+CATEGORY_FOLDERS = {
+    "letter": "motivationsschreiben",
+    "cv": "lebenslauf",
+    "report": "zeugnis",
+    "certificate": "zertifikat",
+    "other": "andere",
+}
+CATEGORY_LABELS = {
+    "letter": "Motivationsschreiben",
+    "cv": "Lebenslauf",
+    "report": "Zeugnis",
+    "certificate": "Zertifikat/Test",
+    "other": "Andere",
+}
+
+
+class Document(Base):
+    """An application document of the son's (school report, certificate, CV, ...), for the dossier."""
+
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True)
+    category = Column(String(20), nullable=False)
+    title = Column(String(200), nullable=False)
+    issued_on = Column(Date)
+    note = Column(Text, default="", nullable=False)
+    outdated = Column(Boolean, default=False, nullable=False)
+    in_dossier = Column(Boolean, default=True, nullable=False)
+    position = Column(Integer, default=0, nullable=False)  # order inside the category, ascending
+    filename = Column(String(300), nullable=False)
+    path = Column(String(500), nullable=False)  # relative to config.files_dir()
+    content_type = Column(String(200), default="application/octet-stream", nullable=False)
+    size = Column(Integer, default=0, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    creator = relationship("User")
