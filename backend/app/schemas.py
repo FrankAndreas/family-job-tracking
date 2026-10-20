@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -216,3 +217,31 @@ class SuggestionCheckIn(BaseModel):
     url: str = Field(max_length=500)
 
     check_url = field_validator("url")(clean_link)
+
+
+DocumentCategoryName = Literal["letter", "cv", "report", "certificate", "other"]
+
+
+class DocumentPatch(BaseModel):
+    """Fields left out stay unchanged; null clears only the date."""
+
+    category: DocumentCategoryName | None = None
+    title: str | None = Field(None, max_length=200)
+    issued_on: date | None = None
+    note: str | None = None
+    outdated: bool | None = None
+    in_dossier: bool | None = None
+
+    @field_validator("title")
+    @classmethod
+    def check_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("Titel fehlt")
+        return value
+
+
+class DocumentMoveIn(BaseModel):
+    direction: Literal["up", "down"]

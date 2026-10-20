@@ -8,6 +8,7 @@ from . import (
     applications_api,
     config,
     database,
+    documents_api,
     inbox_api,
     models,
     reminders,
@@ -54,6 +55,7 @@ app.include_router(applications_api.router, prefix="/api")
 app.include_router(inbox_api.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")
 app.include_router(suggestions_api.router, prefix="/api")
+app.include_router(documents_api.router, prefix="/api")
 
 
 @app.get("/health")

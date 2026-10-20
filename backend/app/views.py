@@ -107,3 +107,24 @@ def suggestion_out(s: models.Suggestion, today: date) -> dict:
         ),
         "deadline_passed": bool(s.deadline and s.deadline < today),
     }
+
+
+def document_out(d: models.Document) -> dict:
+    from . import dossier
+
+    return {
+        "id": d.id,
+        "category": d.category,
+        "title": d.title,
+        "issued_on": d.issued_on.isoformat() if d.issued_on else None,
+        "note": d.note,
+        "outdated": d.outdated,
+        "in_dossier": d.in_dossier,
+        "position": d.position,
+        "filename": d.filename,
+        "content_type": d.content_type,
+        "size": d.size,
+        "created_at": iso(d.created_at),
+        "created_by_name": _name(d.creator),
+        "dossier_ok": dossier.kind(d.content_type, d.filename) is not None,
+    }
