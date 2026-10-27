@@ -6,7 +6,7 @@ python-multipart==0.0.32
 bcrypt==5.0.0
 pyjwt==2.15.1
 # Time zone database for zoneinfo; the slim Docker image has none
-tzdata==2025.2
+tzdata==2026.5
 
 # Dossier PDF: merging PDFs, and photos (also HEIC from phones) as pages
 pypdf==6.21.2
