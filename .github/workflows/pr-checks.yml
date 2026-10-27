@@ -1,8 +1,7 @@
 name: Checks
 
 on:
-  pull_request:
-  # Also run by ci-cd.yml before images are built
+  # Run by pull-request.yml on PRs and by ci-cd.yml before images are built
   workflow_call:
 
 jobs:
