@@ -1,0 +1,134 @@
+# Dependabot configuration for automated dependency updates
+
+version: 2
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(backend)"
+      include: "scope"
+    assignees:
+      - "FrankAndreas"
+
+  # Test-only Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/tests"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(tests)"
+      include: "scope"
+    assignees:
+      - "FrankAndreas"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(frontend)"
+      include: "scope"
+    assignees:
+      - "FrankAndreas"
+    groups:
+      # react and react-dom must have the exact same version
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+    ignore:
+      # Ignore major version updates for stability
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Cloudflare email worker npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/cloudflare/email-worker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "cloudflare"
+    commit-message:
+      prefix: "chore(email-worker)"
+      include: "scope"
+    assignees:
+      - "FrankAndreas"
+    ignore:
+      # Ignore major version updates for stability
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+      - "ci/cd"
+    commit-message:
+      prefix: "chore(ci)"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+      - "docker"
