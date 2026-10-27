@@ -9,6 +9,6 @@ python-jose[cryptography]==3.5.0
 tzdata==2025.2
 
 # Dossier PDF: merging PDFs, and photos (also HEIC from phones) as pages
-pypdf==6.21.1
+pypdf==6.21.2
 Pillow==13.0.0
 pillow-heif==1.8.1
