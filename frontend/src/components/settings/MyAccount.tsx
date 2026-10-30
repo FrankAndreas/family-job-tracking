@@ -3,15 +3,12 @@ import api, { errorMessage } from '../../api';
 import { useAuth } from '../../AuthContext';
 import { useToast } from '../../ToastContext';
 import { BUTTON, CARD, INPUT } from '../../ui';
-import PinInput from '../PinInput';
 
 export default function MyAccount() {
     const { user, refreshUser } = useAuth();
     const toast = useToast();
     const [email, setEmail] = useState(user?.email ?? '');
     const [wantsReminders, setWantsReminders] = useState(user?.wants_reminders ?? false);
-    const [currentPin, setCurrentPin] = useState('');
-    const [newPin, setNewPin] = useState('');
 
     const saveProfile = async (e: FormEvent) => {
         e.preventDefault();
@@ -21,18 +18,6 @@ export default function MyAccount() {
             toast('Gespeichert', 'success');
         } catch (err) {
             toast(errorMessage(err));
-        }
-    };
-
-    const changePin = async (e: FormEvent) => {
-        e.preventDefault();
-        try {
-            await api.post('/api/me/pin', { current_pin: currentPin, new_pin: newPin });
-            setCurrentPin('');
-            setNewPin('');
-            toast('PIN geändert', 'success');
-        } catch (err) {
-            toast(errorMessage(err, 'PIN konnte nicht geändert werden'));
         }
     };
 
@@ -58,22 +43,7 @@ export default function MyAccount() {
                     Speichern
                 </button>
             </form>
-            <form onSubmit={changePin} className="space-y-3">
-                <h3 className="font-semibold">PIN ändern</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <PinInput id="current-pin" value={currentPin} onChange={setCurrentPin} placeholder="Aktueller PIN" />
-                    <PinInput
-                        id="new-pin"
-                        value={newPin}
-                        onChange={setNewPin}
-                        placeholder="Neuer PIN (4–8 Ziffern)"
-                        autoComplete="new-password"
-                    />
-                </div>
-                <button type="submit" disabled={currentPin.length < 4 || newPin.length < 4} className={BUTTON}>
-                    PIN ändern
-                </button>
-            </form>
+            <p className="text-sm text-slate-400">Name, PIN und das Abmelden auf allen Geräten sind im Familien-Hub.</p>
         </section>
     );
 }

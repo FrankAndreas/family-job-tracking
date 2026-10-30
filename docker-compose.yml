@@ -20,12 +20,13 @@ services:
       - DATABASE_URL=sqlite:///./data/jobs.db
       - DATA_DIR=/app/data
       - TZ=${TZ:-Europe/Zurich}
-      # Signs login tokens. If empty, a random key is used and everyone is
-      # logged out whenever the container restarts (e.g. on every update).
-      - SECRET_KEY=${SECRET_KEY:-}
-      # PIN for the first user "Admin" on an empty database; empty means a
-      # random PIN, printed once in the backend log
-      - INITIAL_ADMIN_PIN=${INITIAL_ADMIN_PIN:-}
+      # The login is the family hub's (FrankAndreas/family-hub): how this
+      # backend reaches it (e.g. http://<NAS_IP>:8086), where browsers log in
+      # and out (https://home.local.<domain>), and this app's key in the hub
+      - HUB_URL=${HUB_URL:-}
+      - HUB_PUBLIC_URL=${HUB_PUBLIC_URL:-}
+      - HUB_APP_KEY=${HUB_APP_KEY:-jobs}
+      # The app's address at home (https://jobs.local.<domain>), for links in reminders
       - APP_URL=${APP_URL:-}
       # Optional integrations; the app runs without them
       - INBOUND_SECRET=${INBOUND_SECRET:-}

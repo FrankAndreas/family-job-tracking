@@ -2,8 +2,8 @@
 
 A small self-hosted app to keep track of job and apprenticeship applications: every company, and a
 timeline of everything that happened (sent, followed up, reply, interview, offer, …), including the
-e-mails and their attachments. Built for a family: the applicant and a parent both log in with a PIN
-and see everything.
+e-mails and their attachments. Built for a family: the applicant and a parent both log in through the family hub
+(FrankAndreas/family-hub) and see everything.
 
 - **Overview**: counts per status, the applications that need a follow-up, search and filters.
 - **Timeline per application**: events with notes and files; files are stored on the NAS with
@@ -34,7 +34,8 @@ venv/bin/pip install -r backend/requirements.txt -r tests/requirements.txt
 venv/bin/pytest                                   # backend tests
 
 mkdir -p data/dev
-DATA_DIR=data/dev DATABASE_URL=sqlite:///data/dev/dev.db INITIAL_ADMIN_PIN=1234 SECRET_KEY=dev \
+# Logins come from a family hub running locally (family-hub: scripts/dev-backend.sh, port 8086)
+DATA_DIR=data/dev DATABASE_URL=sqlite:///data/dev/dev.db HUB_URL=http://localhost:8086 \
   venv/bin/uvicorn app.main:app --app-dir backend --reload --port 8000
 
 cd frontend && npm install && npm run dev         # http://localhost:5173, proxies /api to :8000
