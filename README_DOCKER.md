@@ -52,9 +52,11 @@ NAS. Since 2026-10-30 the app is home only.
 1. **Reverse proxy.** DSM: **Control Panel → Login Portal → Advanced → Reverse Proxy → Create**: source HTTPS,
    `jobs.local.<domain>`, port 443; destination HTTP, `localhost`, port 8082. Pick the `*.local.<domain>`
    certificate for it (**Control Panel → Security → Certificate → Settings**).
-2. **In the hub's Einstellungen → Apps**, give the app's tile the app key `jobs` and tick who uses it. Names come
-   from the hub; a parent there is **Admin** here (settings, people). "Abmelden" logs out in the hub, and so in every
-   family app.
+2. **In the hub's Einstellungen → Apps**, give the app's tile the app key `jobs`, tick who uses it, and switch on
+   **"The app may see their confirmed e-mail addresses"**: the addresses (for reminders, and to tell the family's own
+   mails apart) then come from the hub, where each person confirms theirs; without it, each sets one here under
+   **Mein Konto**. Names come from the hub; a parent there is **Admin** here (settings, people). "Abmelden" logs out
+   in the hub, and so in every family app.
 
 Everyone sees and edits all applications. Someone the hub no longer gives the app is hidden (no reminders, no
 suggestions by mail) until an admin deletes their data under **Einstellungen → Benutzer**.

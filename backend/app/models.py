@@ -48,6 +48,8 @@ class User(Base):
     hub_id = Column(Integer, unique=True)
     # False: the hub no longer lists the person here; hidden until an admin deletes them
     is_active = Column(Boolean, default=True, nullable=False)
+    # The address comes from the hub (its tile for this app shares them): changed there, not here
+    email_from_hub = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
 

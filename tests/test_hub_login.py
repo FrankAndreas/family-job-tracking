@@ -140,6 +140,34 @@ def test_names_and_admin_only_in_the_hub(client, admin_headers):
     assert changed.status_code == 200 and changed.json()["email"] == "sohn@example.ch"
 
 
+# E-mail addresses from the hub, when its tile for this app shares them (2026-10-30): one place to keep them
+
+
+def test_addresses_come_from_the_hub_when_shared(client, family_hub):
+    family_hub.share_email = True
+    family_hub.emails[ADMIN] = "papa@example.ch"
+    family_hub._changed()
+    headers = login(client)
+    found = me(client, headers).json()
+    assert (found["email"], found["email_from_hub"]) == ("papa@example.ch", True)
+    refused = client.patch("/api/me", json={"email": "other@example.ch"}, headers=headers)
+    assert refused.status_code == 400 and refused.json()["detail"] == "from_hub"
+    assert client.patch("/api/me", json={"wants_reminders": True}, headers=headers).status_code == 200
+
+
+def test_no_address_in_the_hub_means_none_here(client, family_hub, admin_headers):
+    client.patch("/api/me", json={"email": "alt@example.ch"}, headers=admin_headers)
+    family_hub.share_email = True
+    family_hub._changed()
+    assert me(client, login(client)).json()["email"] is None
+
+
+def test_without_sharing_the_app_keeps_its_own(client, admin_headers):
+    client.patch("/api/me", json={"email": "papa@example.ch"}, headers=admin_headers)
+    found = me(client, admin_headers).json()
+    assert (found["email"], found["email_from_hub"]) == ("papa@example.ch", False)
+
+
 # Removed in the hub: hidden with their data, until an admin deletes it
 
 
@@ -200,7 +228,21 @@ def test_upgrade_of_an_old_database(tmp_path):
     upgrade.upgrade(engine)  # a second start changes nothing
     with sqlite3.connect(path) as conn:
         columns = [r[1] for r in conn.execute("PRAGMA table_info(users)")]
-        assert "pin_hash" not in columns and {"hub_id", "is_active"} <= set(columns)
+        assert "pin_hash" not in columns and {"hub_id", "is_active", "email_from_hub"} <= set(columns)
         assert conn.execute("SELECT name, email, is_admin, is_active, hub_id FROM users").fetchall() == [
             ("Papa", "papa@example.ch", 1, 1, None)
         ]
+
+
+def test_missing_address_hint_points_to_the_hub(client, family_hub, db):
+    from app import integrations
+    from app.timeutil import utcnow
+
+    create_user(client, None, "Sohn")
+    remove_from_hub("Sohn")
+    family_hub.share_email = True
+    family_hub._changed()
+    client.get("/api/users", headers=login(client))
+    warnings = " ".join(integrations.status(db, utcnow())["inbound"]["warnings"])
+    # Someone removed in the hub isn't listed; the address is added (and confirmed) in the hub
+    assert "Ohne E-Mail-Adresse: Admin." in warnings and "Familien-Hub" in warnings and "Sohn" not in warnings

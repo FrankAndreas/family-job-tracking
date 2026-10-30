@@ -10,6 +10,8 @@ export interface User {
     is_admin: boolean;
     email: string | null;
     wants_reminders: boolean;
+    // The address comes from the family hub (its tile for this app shares them): changed there
+    email_from_hub: boolean;
 }
 
 export interface Attachment {

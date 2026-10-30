@@ -16,6 +16,8 @@ def upgrade(engine: Engine) -> None:
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_hub_id ON users (hub_id)"))
         if "is_active" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+        if "email_from_hub" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_from_hub BOOLEAN NOT NULL DEFAULT 0"))
         # SQLite 3.35+ drops a column in place (none of these is in an index or constraint)
         for gone in ("pin_hash", "failed_logins", "locked_until"):
             if gone in columns:

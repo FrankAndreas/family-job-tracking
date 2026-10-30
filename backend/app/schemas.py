@@ -36,6 +36,8 @@ class UserOut(BaseModel):
     is_admin: bool
     email: str | None
     wants_reminders: bool
+    # The address comes from the family hub: changed there
+    email_from_hub: bool = False
 
 
 class MePatch(BaseModel):

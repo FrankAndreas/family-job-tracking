@@ -10,6 +10,9 @@ class FakeHub:
         self.people: dict[str, hub.HubPerson] = {}
         self.access: set[str] = set()
         self.down = False
+        # The app's tile shares the people's confirmed e-mail addresses (and which ones the people have)
+        self.share_email = False
+        self.emails: dict[str, str] = {}
         self._next_id = 1
 
     def _changed(self) -> None:
@@ -69,7 +72,13 @@ class FakeHub:
         person = self._person(tok)
         if person is None or person.name not in self.access:
             return []
-        return sorted((self.people[name] for name in self.access), key=lambda p: p.name.casefold())
+        found = sorted((self.people[name] for name in self.access), key=lambda p: p.name.casefold())
+        if not self.share_email:
+            return found
+        return [
+            hub.HubPerson(p.id, p.name, p.role, p.color, p.language, email=self.emails.get(p.name), email_shared=True)
+            for p in found
+        ]
 
 
 def token(name: str) -> str:

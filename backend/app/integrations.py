@@ -19,12 +19,18 @@ def _inbound(db: Session, settings: models.Settings) -> dict:
     warnings = []
     if not settings.inbound_address:
         warnings.append("Die Eingangsadresse ist in den Einstellungen nicht gesetzt.")
-    users_without = db.query(models.User.name).filter(models.User.email.is_(None)).order_by(models.User.name)
-    without = [name for (name,) in users_without]
+    # Only the people the family hub lists; with the hub sharing addresses, they are entered (and confirmed) there
+    active = db.query(models.User).filter(models.User.is_active.is_(True)).order_by(models.User.name).all()
+    without = [u.name for u in active if u.email is None]
     if without:
+        where = (
+            "im Familien-Hub unter Einstellungen → Personen eintragen und bestätigen"
+            if any(u.email_from_hub for u in active)
+            else "unter Einstellungen → Mein Konto speichern"
+        )
         warnings.append(
             f"Ohne E-Mail-Adresse: {', '.join(without)}. Ihre Mails an die App zählen als erhalten statt gesendet "
-            "(unter Einstellungen → Mein Konto speichern)."
+            f"({where})."
         )
     return {
         "state": state,
