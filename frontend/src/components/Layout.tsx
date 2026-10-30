@@ -68,7 +68,7 @@ export default function Layout() {
                             )}
                         </NavLink>
                     </nav>
-                    <button type="button" onClick={logout} className="text-sm text-slate-400 hover:text-white">
+                    <button type="button" onClick={() => void logout()} className="text-sm text-slate-400 hover:text-white">
                         {user?.name} abmelden
                     </button>
                 </div>

@@ -5,16 +5,19 @@ import Layout from './components/Layout';
 import ApplicationPage from './pages/ApplicationPage';
 import Documents from './pages/Documents';
 import Inbox from './pages/Inbox';
-import Login from './pages/Login';
+import NoAccess from './pages/NoAccess';
 import Overview from './pages/Overview';
 import SettingsPage from './pages/SettingsPage';
 import Suggestions from './pages/Suggestions';
 import { ToastProvider } from './ToastContext';
 
+// Not logged in: the API's 401 has already sent the browser to the family hub's login
 function RequireAuth({ children }: { children: ReactElement }) {
-    const { user, isLoading } = useAuth();
-    if (isLoading) return <p className="p-6 text-slate-400">Laden…</p>;
-    return user ? children : <Navigate to="/login" replace />;
+    const { state } = useAuth();
+    if (state === 'no_access') return <NoAccess />;
+    if (state === 'hub_unavailable') return <NoAccess hubDown />;
+    if (state !== 'in') return <p className="p-6 text-slate-400">Laden…</p>;
+    return children;
 }
 
 export default function App() {
@@ -23,7 +26,6 @@ export default function App() {
             <AuthProvider>
                 <BrowserRouter>
                     <Routes>
-                        <Route path="/login" element={<Login />} />
                         <Route
                             element={
                                 <RequireAuth>

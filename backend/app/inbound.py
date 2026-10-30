@@ -119,7 +119,12 @@ def process(
         return None
 
     if mailparse.find_tag(mail.recipients, {suggestions.SUGGESTION_TAG}):
-        sender = db.query(models.User).filter(models.User.email == mail.from_addr).first()
+        # Only people the family hub lists send suggestions in
+        sender = (
+            db.query(models.User)
+            .filter(models.User.email == mail.from_addr, models.User.is_active.is_(True))
+            .first()
+        )
         links = suggestions.extract_links(mail.body_text, *mail.html_links)
         if sender is not None and links:
             created = suggestions.create_from_mail(db, sender, links, mail.subject)

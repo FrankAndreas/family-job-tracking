@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import (
+    hub,
+    upgrade,
     applications_api,
     config,
     database,
@@ -16,20 +18,19 @@ from . import (
     suggestions_api,
     users_api,
 )
-from .seed import seed_admin
 from .settings_store import get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 models.Base.metadata.create_all(bind=database.engine)
+# Columns added since (the people from the family hub, 2026-10-30)
+upgrade.upgrade(database.engine)
 
-# A fresh database gets the settings row and a first admin to log in with
+# A fresh database gets the settings row; the people come from the family hub
 with database.SessionLocal() as _db:
     get_settings(_db)
-    _initial_pin = seed_admin(_db)
-if _initial_pin:
-    logger.warning("Created user 'Admin' with INITIAL PIN %s. Log in and change it in Einstellungen.", _initial_pin)
+logger.info("Family hub: %s (logins at %s, app key %s)", hub.hub_url(), hub.public_url(), hub.app_key())
 
 # Both integrations are optional; say which ones are on, but never refuse to start
 logger.info(

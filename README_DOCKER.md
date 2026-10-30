@@ -33,8 +33,8 @@ Two integrations are optional and can be added later; the app runs fine without 
    ```
 3. **Create `.env`** (all settings are explained in `.env.example`):
    ```bash
-   printf 'PUID=1031\nPGID=100\nPORT=8082\nTZ=Europe/Zurich\nSECRET_KEY=%s\nAPP_URL=https://bewerbungen.example.ch\n' \
-     "$(openssl rand -hex 32)" | sudo tee .env
+   printf 'PUID=1031\nPGID=100\nPORT=8082\nTZ=Europe/Zurich\nHUB_URL=http://<NAS_IP>:8086\nHUB_PUBLIC_URL=https://home.local.<domain>\nAPP_URL=https://jobs.local.<domain>\n' \
+     | sudo tee .env
    sudo chmod 600 .env
    ```
 4. **Start** it:
@@ -42,21 +42,28 @@ Two integrations are optional and can be added later; the app runs fine without 
    sudo docker-compose pull
    sudo docker-compose up -d
    ```
-5. **Open** `http://<NAS_IP>:8082`.
+5. **Open** `https://jobs.local.<domain>` once the [address at home](#at-home-https-and-the-family-login) is set
+   up: the family hub's login cookie only reaches addresses under `local.<domain>`.
 
-### First login
-On an empty database the backend creates the user **Admin** with a random 4-digit PIN, printed once in
-its log:
-```bash
-sudo docker logs jobs-backend 2>&1 | grep "INITIAL PIN"
-```
-Log in, then in **Einstellungen**:
-- change the PIN
-- rename Admin
-- add the other user (e.g. your son) under **Benutzer**
+### At home: HTTPS and the family login
+The app has no PINs of its own: the family logs in at the family hub (FrankAndreas/family-hub), which runs on the same
+NAS. Since 2026-10-30 the app is home only.
 
-Everyone sees and edits all applications. To choose the first PIN yourself, set
-`INITIAL_ADMIN_PIN=1234` in `.env` before the first start.
+1. **Reverse proxy.** DSM: **Control Panel → Login Portal → Advanced → Reverse Proxy → Create**: source HTTPS,
+   `jobs.local.<domain>`, port 443; destination HTTP, `localhost`, port 8082. Pick the `*.local.<domain>`
+   certificate for it (**Control Panel → Security → Certificate → Settings**).
+2. **In the hub's Einstellungen → Apps**, give the app's tile the app key `jobs` and tick who uses it. Names come
+   from the hub; a parent there is **Admin** here (settings, people). "Abmelden" logs out in the hub, and so in every
+   family app.
+
+Everyone sees and edits all applications. Someone the hub no longer gives the app is hidden (no reminders, no
+suggestions by mail) until an admin deletes their data under **Einstellungen → Benutzer**.
+
+**Switching an existing installation** to the hub: add `HUB_URL`, `HUB_PUBLIC_URL` and `HUB_APP_KEY` to the backend's
+`environment:` in the NAS's `compose.yaml` (as in `docker-compose.yml`), remove `SECRET_KEY` and `INITIAL_ADMIN_PIN`,
+set the values in `.env` and `APP_URL=https://jobs.local.<domain>`, then update. Before the first login, make sure
+every user exists in the hub with the same name, as a parent if they're admin here, and is ticked: each is linked to
+that hub person at the first login, and only then. The database gets its new columns on start.
 
 ### Where the data is
 Everything worth keeping is in `data/`:
@@ -73,28 +80,18 @@ events with German labels), the raw tables as CSV and the `files/` folder. The C
 UTF-8 BOM, so Excel opens them directly. The export is an archive, not a restore format: back up
 `data/` for that.
 
-## Reaching the app from outside (Cloudflare Tunnel and Access)
+## Through the Cloudflare Tunnel: only the e-mail worker
 
-The NAS is already connected to Cloudflare Zero Trust with a tunnel. Cloudflare renames dashboard
-menus from time to time; older names are given in brackets.
+The app is home only (2026-10-30): requests through the tunnel are no login. The tunnel still carries the incoming
+e-mails: the worker posts them to `/api/inbound` on the tunnel's hostname, behind its own Access application with a
+service token, and the app checks `INBOUND_SECRET` on top (see below).
 
-1. **Route the hostname to the app.** In **Zero Trust → Networks → Connectors → Cloudflare Tunnels**
-   (Networks → Tunnels), open your tunnel, choose **Edit**, then **Published application routes**
-   (Public Hostname) → **Add**:
-   - subdomain `bewerbungen`, your domain, path empty
-   - service type `HTTP`, URL `<NAS_IP>:8082`
-
-   Port 8082 is the frontend container; its nginx passes `/api` on to the backend. Use the NAS's LAN
-   IP if `cloudflared` runs as a container in a bridge network (`localhost` would be the `cloudflared`
-   container itself); `localhost:8082` only works if it runs on the host network. Cloudflare creates
-   the DNS record. A **502 Bad Gateway** means `cloudflared` can't reach the port.
-2. **Access application for people.** In **Access controls → Applications → Create new
-   application** (Access → Applications → Add) choose **Public DNS** (Self-hosted):
-   - subdomain `bewerbungen`, your domain, path empty
-   - a policy with action **Allow** that includes your family's e-mail addresses
-
-   The PIN login of the app comes on top of that.
-3. Set `APP_URL=https://bewerbungen.<domain>` in `.env` and restart (`sudo docker-compose up -d`).
+1. **Tunnel route.** In **Zero Trust → Networks → Connectors → Cloudflare Tunnels**, the tunnel's **Published
+   application routes**: subdomain `bewerbungen`, your domain, path `api/inbound`, service `HTTP`, URL
+   `<NAS_IP>:8082`. Use the NAS's LAN IP if `cloudflared` runs as a container in a bridge network. A **502 Bad
+   Gateway** means `cloudflared` can't reach the port.
+2. **No Access application for people.** If an older setup has one for `bewerbungen.<domain>` without a path, delete
+   it; the worker's application below (path `api/inbound`) stays.
 
 ## Incoming e-mails (Cloudflare Email Worker)
 
@@ -284,25 +281,26 @@ the same. The examples use the suffix `papa`; pick your own.
 | NAS folder | `/volume1/docker/family-jobs` | `/volume1/docker/family-jobs-papa` |
 | `.env`: `PORT` / `CONTAINER_PREFIX` | `8082` / `jobs` | `8083` / `jobs-papa` |
 | Containers | `jobs-backend`, `jobs-frontend` | `jobs-papa-backend`, `jobs-papa-frontend` |
-| Hostname | `bewerbungen.<domain>` | `bewerbungen-papa.<domain>` |
+| Address at home | `jobs.local.<domain>` | `jobs-papa.local.<domain>` |
+| App key in the hub | `jobs` | `jobs-papa` |
+| Tunnel hostname (worker only) | `bewerbungen.<domain>` | `bewerbungen-papa.<domain>` |
 | Inbound address | `bewerbungen@<domain>` | `bewerbungen-papa@<domain>` |
 | Email Worker | `family-jobs-inbound` | `family-jobs-inbound-papa` |
 
 1. **Install it** as in [Installation](#installation), with the second folder. Use a new
-   `SECRET_KEY` and `INBOUND_SECRET`, and add to its `.env`:
+   `INBOUND_SECRET`, and add to its `.env`:
    ```
    PORT=8083
    CONTAINER_PREFIX=jobs-papa
-   APP_URL=https://bewerbungen-papa.<domain>
+   HUB_APP_KEY=jobs-papa
+   APP_URL=https://jobs-papa.local.<domain>
    ```
    `RESEND_API_KEY` and `MAIL_FROM` can be the same as in the first instance. In the Container
-   Manager, give the project its own name (e.g. `family-jobs-papa`). The first login uses its own
-   initial PIN: `sudo docker logs jobs-papa-backend 2>&1 | grep "INITIAL PIN"`.
-2. **Tunnel route:** add a second published application route `bewerbungen-papa` → `HTTP`,
-   `<NAS_IP>:8083`.
-3. **Access application for people:** a new application for `bewerbungen-papa.<domain>` whose
-   policy allows **only your own** e-mail address. Don't add the hostname to the family application,
-   or everyone in the family gets past Cloudflare Access (the PIN would still be needed).
+   Manager, give the project its own name (e.g. `family-jobs-papa`). In the hub, add a tile with the app key
+   `jobs-papa` and tick **only yourself**; add a reverse proxy entry for `jobs-papa.local.<domain>` → port 8083.
+2. **Tunnel route (worker only):** add a second published application route `bewerbungen-papa`, path `api/inbound`
+   → `HTTP`, `<NAS_IP>:8083`.
+3. **Who sees it** is the hub's tile `jobs-papa`: only the people ticked there get in, at home.
 4. **Access for the worker:** open the existing application `family-jobs-inbound` and add a second
    public hostname: `bewerbungen-papa`, your domain, path `api/inbound`. The same service token
    and policy then cover both instances.
@@ -340,4 +338,5 @@ the same. The examples use the suffix `papa`; pick your own.
 | Mails arrive at the fallback address | the header `X-Family-Jobs-Error` of the forwarded mail says why |
 | Card "Erinnerungen" is red | the Resend error shown on the card (unverified domain, wrong key) |
 | Reminder e-mails have no links | `APP_URL` in `.env` |
-| Everyone is logged out after an update | `SECRET_KEY` is empty in `.env` |
+| The app keeps sending you to the family hub | open it at `https://jobs.local.<domain>`; check the hub's `COOKIE_DOMAIN=local.<domain>` |
+| "Kein Zugang" after logging in at the hub | the hub tile's app key `jobs`, and that the person is ticked there |

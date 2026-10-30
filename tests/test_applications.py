@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from app import applications_api, config
 from app.settings_store import get_settings
-from helpers import add_event, create_application, create_user, login
+from helpers import add_event, create_application, create_user, login, remove_from_hub
 
 
 def ago(days):
@@ -181,6 +181,9 @@ def test_deleting_user_keeps_their_events(client, admin_headers):
     app = create_application(client, son)
     add_event(client, son, app["id"])
     son_id = next(u["id"] for u in client.get("/api/users", headers=admin_headers).json() if u["name"] == "Sohn")
+    # Only someone the family hub no longer lists is deleted here
+    remove_from_hub("Sohn")
+    client.get("/api/users", headers=admin_headers)
     assert client.delete(f"/api/users/{son_id}", headers=admin_headers).status_code == 204
     detail = get(client, admin_headers, app["id"])
     assert detail["created_by_name"] is None
