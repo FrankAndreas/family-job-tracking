@@ -28,6 +28,12 @@ def _ask_the_hub(request: Request, db: Session) -> None:
             raise HTTPException(503, "hub_unavailable") from None
 
 
+def _keep_hub_email(user: models.User, data: dict) -> None:
+    """An address from the family hub is changed there: here it would be overwritten at the next sync."""
+    if user.email_from_hub and "email" in data and data["email"] != user.email:
+        raise HTTPException(400, "from_hub")
+
+
 @router.get("/hub")
 def hub_link():
     """Where browsers log in and out: the family hub's address at home."""
@@ -43,7 +49,9 @@ def me(user: models.User = Depends(auth.get_current_user)):
 def update_me(
     body: schemas.MePatch, user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)
 ):
-    for key, value in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    _keep_hub_email(user, data)
+    for key, value in data.items():
         setattr(user, key, value)
     db.commit()
     db.refresh(user)
@@ -76,6 +84,7 @@ def update_user(
     data = body.model_dump(exclude_unset=True)
     if ("name" in data and data["name"] != user.name) or ("is_admin" in data and data["is_admin"] != user.is_admin):
         raise HTTPException(400, "from_hub")
+    _keep_hub_email(user, data)
     for key in ("email", "wants_reminders"):
         if key in data and not (key == "wants_reminders" and data[key] is None):
             setattr(user, key, data[key])

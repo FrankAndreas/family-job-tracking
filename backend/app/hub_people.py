@@ -103,6 +103,11 @@ def _apply(db: Session, people: list[hub.HubPerson]) -> None:
             db.add(row)
         _set_name(row, person.name)
         row.is_admin = person.role == "PARENT"
+        # With the hub sharing addresses, the hub's confirmed one is the address here (one place to keep them);
+        # without, the app keeps its own
+        if person.email_shared:
+            row.email = person.email
+        row.email_from_hub = person.email_shared
         row.is_active = True
     for row in rows:
         if row.id not in listed:

@@ -25,6 +25,9 @@ class HubPerson:
     role: str
     color: Optional[str]
     language: str
+    # Only when the app's tile in the hub shares them (2026-10-30): the confirmed address, or None
+    email: Optional[str] = None
+    email_shared: bool = False
 
 
 class HubUnavailable(Exception):
@@ -54,6 +57,8 @@ def _person(data: dict) -> HubPerson:
         role=str(data["role"]),
         color=data.get("color"),
         language=str(data.get("language") or "de"),
+        email=str(data["email"]).strip().casefold() if data.get("email") else None,
+        email_shared="email" in data,
     )
 
 
