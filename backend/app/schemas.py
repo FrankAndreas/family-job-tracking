@@ -29,22 +29,6 @@ def clean_name(value: str | None) -> str | None:
     return value
 
 
-class LoginIn(BaseModel):
-    name: str
-    pin: str
-
-
-class TokenOut(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
-class UserPublic(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    name: str
-
-
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -58,25 +42,6 @@ class MePatch(BaseModel):
     email: str | None = None
     wants_reminders: bool | None = None
 
-    check_email = field_validator("email")(clean_email)
-
-
-class PinChange(BaseModel):
-    current_pin: str
-    new_pin: str = Field(pattern=PIN_PATTERN)
-
-
-class PinReset(BaseModel):
-    pin: str = Field(pattern=PIN_PATTERN)
-
-
-class UserCreate(BaseModel):
-    name: str = Field(max_length=50)
-    pin: str = Field(pattern=PIN_PATTERN)
-    is_admin: bool = False
-    email: str | None = None
-
-    check_name = field_validator("name")(clean_name)
     check_email = field_validator("email")(clean_email)
 
 

@@ -44,7 +44,7 @@ def add_application(db, company, days_ago, event_type="sent", archived=False):
 
 
 def add_user(db, name, email, wants=True):
-    db.add(models.User(name=name, pin_hash="x", email=email, wants_reminders=wants))
+    db.add(models.User(name=name, email=email, wants_reminders=wants))
     db.commit()
 
 

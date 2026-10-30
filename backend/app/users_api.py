@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""Who is logged in, and the app's people. They come from the family hub (spec 2026-10-30): login, name and admin (a
+parent there) are managed there; the app keeps each person's e-mail and reminders, and deletes the data of people the
+hub removed."""
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from . import auth, models, schemas
+from . import auth, hub, hub_people, models, schemas
 from .database import get_db
 
 router = APIRouter(tags=["users"])
@@ -14,27 +18,20 @@ def _get_user(db: Session, user_id: int) -> models.User:
     return user
 
 
-def _admin_count(db: Session) -> int:
-    return db.query(models.User).filter(models.User.is_admin.is_(True)).count()
+def _ask_the_hub(request: Request, db: Session) -> None:
+    """The people lists show the hub's current state, not the one of up to a minute ago."""
+    token, _ = auth.request_token(request)
+    if token:
+        try:
+            hub_people.refresh(db, token, force=True)
+        except hub.HubUnavailable:
+            raise HTTPException(503, "hub_unavailable") from None
 
 
-def _name_taken(db: Session, name: str, except_id: int | None = None) -> bool:
-    query = db.query(models.User).filter(models.User.name == name)
-    if except_id is not None:
-        query = query.filter(models.User.id != except_id)
-    return query.first() is not None
-
-
-@router.get("/users/public", response_model=list[schemas.UserPublic])
-def public_users(db: Session = Depends(get_db)):
-    """Names for the login screen."""
-    return db.query(models.User).order_by(models.User.name).all()
-
-
-@router.post("/token", response_model=schemas.TokenOut)
-def login(body: schemas.LoginIn, db: Session = Depends(get_db)):
-    user = auth.authenticate(db, body.name, body.pin)
-    return {"access_token": auth.create_access_token(user.id)}
+@router.get("/hub")
+def hub_link():
+    """Where browsers log in and out: the family hub's address at home."""
+    return {"login_url": hub.public_url()}
 
 
 @router.get("/me", response_model=schemas.UserOut)
@@ -53,34 +50,18 @@ def update_me(
     return user
 
 
-@router.post("/me/pin", status_code=204)
-def change_pin(
-    body: schemas.PinChange, user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)
-):
-    if not auth.verify_pin(body.current_pin, user.pin_hash):
-        raise HTTPException(400, "Aktueller PIN ist falsch")
-    user.pin_hash = auth.get_pin_hash(body.new_pin)
-    db.commit()
-
-
 @router.get("/users", response_model=list[schemas.UserOut])
-def list_users(_admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
-    return db.query(models.User).order_by(models.User.name).all()
+def list_users(request: Request, _admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
+    """The people the hub lists for the app."""
+    _ask_the_hub(request, db)
+    return db.query(models.User).filter(models.User.is_active.is_(True)).order_by(models.User.name).all()
 
 
-@router.post("/users", response_model=schemas.UserOut, status_code=201)
-def create_user(
-    body: schemas.UserCreate, _admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)
-):
-    if _name_taken(db, body.name):
-        raise HTTPException(409, "Name ist schon vergeben")
-    user = models.User(
-        name=body.name, pin_hash=auth.get_pin_hash(body.pin), is_admin=body.is_admin, email=body.email
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+@router.get("/users/removed", response_model=list[schemas.UserOut])
+def removed_users(request: Request, _admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
+    """People the hub no longer lists: hidden until an admin deletes them."""
+    _ask_the_hub(request, db)
+    return db.query(models.User).filter(models.User.is_active.is_(False)).order_by(models.User.name).all()
 
 
 @router.patch("/users/{user_id}", response_model=schemas.UserOut)
@@ -90,40 +71,25 @@ def update_user(
     _admin: models.User = Depends(auth.require_admin),
     db: Session = Depends(get_db),
 ):
+    """An admin sets a person's e-mail and reminders; the name and admin come from the family hub."""
     user = _get_user(db, user_id)
     data = body.model_dump(exclude_unset=True)
-    if data.get("name") and _name_taken(db, data["name"], except_id=user.id):
-        raise HTTPException(409, "Name ist schon vergeben")
-    if data.get("is_admin") is False and user.is_admin and _admin_count(db) == 1:
-        raise HTTPException(400, "Es braucht mindestens einen Admin")
-    for key, value in data.items():
-        if key in ("name", "is_admin", "wants_reminders") and value is None:
-            continue
-        setattr(user, key, value)
+    if ("name" in data and data["name"] != user.name) or ("is_admin" in data and data["is_admin"] != user.is_admin):
+        raise HTTPException(400, "from_hub")
+    for key in ("email", "wants_reminders"):
+        if key in data and not (key == "wants_reminders" and data[key] is None):
+            setattr(user, key, data[key])
     db.commit()
     db.refresh(user)
     return user
 
 
-@router.post("/users/{user_id}/pin", status_code=204)
-def reset_pin(
-    user_id: int,
-    body: schemas.PinReset,
-    _admin: models.User = Depends(auth.require_admin),
-    db: Session = Depends(get_db),
-):
-    user = _get_user(db, user_id)
-    user.pin_hash = auth.get_pin_hash(body.pin)
-    user.failed_logins = 0
-    user.locked_until = None
-    db.commit()
-
-
 @router.delete("/users/{user_id}", status_code=204)
-def delete_user(user_id: int, admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
+def delete_user(user_id: int, _admin: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
     user = _get_user(db, user_id)
-    if user.id == admin.id:
-        raise HTTPException(400, "Du kannst dich nicht selbst löschen")
+    # Only people the hub no longer lists: an active family member's data is never deleted by mistake
+    if user.is_active:
+        raise HTTPException(409, "still_in_hub")
     # Their applications and events stay; "created_by" becomes empty (ON DELETE SET NULL)
     db.delete(user)
     db.commit()

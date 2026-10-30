@@ -39,12 +39,15 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, nullable=False)
-    pin_hash = Column(String, nullable=False)
+    # A parent in the family hub (spec 2026-10-30): manages the people's e-mail and the settings here
     is_admin = Column(Boolean, default=False, nullable=False)
     email = Column(String(200))
     wants_reminders = Column(Boolean, default=False, nullable=False)
-    failed_logins = Column(Integer, default=0, nullable=False)
-    locked_until = Column(DateTime)
+    # The person in the family hub: login, name and admin come from there. None: a row from before the hub, linked by
+    # name at the first sync
+    hub_id = Column(Integer, unique=True)
+    # False: the hub no longer lists the person here; hidden until an admin deletes them
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
 

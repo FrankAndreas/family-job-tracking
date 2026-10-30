@@ -26,7 +26,7 @@ def test_naive_input_is_local_time():
 
 
 def test_deleting_a_user_nulls_created_by(db):
-    user = models.User(name="Sohn", pin_hash="x")
+    user = models.User(name="Sohn")
     db.add(user)
     db.flush()
     application = models.Application(company="Migros", mail_tag="abcd", created_by=user.id)

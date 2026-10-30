@@ -3,8 +3,6 @@ uvicorn==0.54.0
 sqlalchemy==2.1.6
 pydantic==2.14.1
 python-multipart==0.0.32
-bcrypt==5.0.0
-pyjwt==2.15.1
 # Time zone database for zoneinfo; the slim Docker image has none
 tzdata==2026.5
 

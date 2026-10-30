@@ -202,7 +202,8 @@ def render(digest: Digest, app_url: str) -> tuple[str, str, str]:
 def recipients(db: Session) -> list[str]:
     users = (
         db.query(models.User)
-        .filter(models.User.wants_reminders.is_(True), models.User.email.isnot(None))
+        # Someone the family hub no longer lists gets no reminders
+        .filter(models.User.wants_reminders.is_(True), models.User.email.isnot(None), models.User.is_active.is_(True))
         .order_by(models.User.name)
         .all()
     )
