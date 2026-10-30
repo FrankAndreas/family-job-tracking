@@ -52,15 +52,49 @@ def test_hub_down_503(client, family_hub):
     assert response.status_code == 503 and response.json()["detail"] == "hub_unavailable"
 
 
-def test_no_login_through_the_tunnel(client):
-    # Home only (2026-10-30): only the e-mail worker comes through the tunnel, with its own secret
+def test_no_hub_login_through_the_tunnel(client):
+    # Through the tunnel a hub token can only be a stolen home login: only Cloudflare Access's login counts there
     response = me(client, {**bearer(fake_hub.token(ADMIN)), "Cf-Connecting-Ip": "203.0.113.7"})
     assert response.status_code == 401
 
 
+# From outside (through the Cloudflare tunnel) the Cloudflare Access login counts, passed on to the hub (2026-10-30)
+OUTSIDE = {"Cf-Connecting-Ip": "203.0.113.7"}
+
+
+def outside(name=ADMIN, **extra):
+    return {**OUTSIDE, "Cf-Access-Jwt-Assertion": fake_hub.cloudflare_token(name), **extra}
+
+
+def test_cloudflare_login_from_outside(client):
+    found = me(client, outside())
+    assert found.status_code == 200 and found.json()["name"] == ADMIN
+
+
+def test_changes_from_outside_need_the_header(client):
+    refused = client.post("/api/applications", json={"company": "Migros"}, headers=outside())
+    assert refused.status_code == 403 and refused.json()["detail"] == "csrf"
+    headers = outside(**{"X-Requested-With": "jobs"})
+    allowed = client.post("/api/applications", json={"company": "Migros"}, headers=headers)
+    assert allowed.status_code == 201
+
+
+def test_unknown_to_the_hub_from_outside(client):
+    response = me(client, outside("Nobody"))
+    assert response.status_code == 403 and response.json()["detail"] == "no_access"
+
+
+def test_logout_from_outside_is_cloudflares(client, monkeypatch):
+    monkeypatch.setenv("HUB_PUBLIC_URL", "https://home.local.example.ch")
+    assert client.get("/api/hub", headers=OUTSIDE).json()["logout_url"] == "/cdn-cgi/access/logout"
+
+
 def test_hub_login_url(client, monkeypatch):
     monkeypatch.setenv("HUB_PUBLIC_URL", "https://home.local.example.ch")
-    assert client.get("/api/hub").json() == {"login_url": "https://home.local.example.ch"}
+    assert client.get("/api/hub").json() == {
+        "login_url": "https://home.local.example.ch",
+        "logout_url": "https://home.local.example.ch/logout",
+    }
 
 
 def test_removed_endpoints(client):

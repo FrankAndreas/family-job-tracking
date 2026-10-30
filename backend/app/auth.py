@@ -21,6 +21,8 @@ CSRF_HEADER = "X-Requested-With"
 CSRF_VALUE = "jobs"
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 TUNNEL_HEADER = "Cf-Connecting-Ip"
+# From outside, Cloudflare Access sends the login it checked (the person's e-mail code) in this header
+CLOUDFLARE_HEADER = "Cf-Access-Jwt-Assertion"
 
 
 def request_token(request: Request) -> tuple[str | None, bool]:
@@ -47,20 +49,25 @@ def _active(db: Session, hub_id: int) -> models.User | None:
 
 def _resolve(request: Request, db: Session) -> models.User:
     """The person behind the request's login. Blocking (the hub, the database): runs in a worker thread."""
-    # Home only (2026-10-30): Cloudflare sets this on everything through its tunnel (only the e-mail worker comes that
-    # way, with its own secret); a hub login arriving from outside can only be a stolen home cookie (family-hub README,
-    # "For apps")
-    if TUNNEL_HEADER in request.headers:
-        raise _not_logged_in()
-    token, from_cookie = request_token(request)
+    # From outside (Cloudflare sets Cf-Connecting-Ip on everything through its tunnel) only Cloudflare Access's login
+    # counts, passed on to the hub; a hub login arriving that way can only be a stolen home cookie (family-hub README,
+    # "For apps"). Cloudflare's own cookie comes with every request, so changes need the header there too
+    outside = TUNNEL_HEADER in request.headers
+    token: str | None
+    if outside:
+        assertion = request.headers.get(CLOUDFLARE_HEADER)
+        token, needs_header = (hub.CLOUDFLARE_PREFIX + assertion if assertion else None), True
+    else:
+        token, needs_header = request_token(request)
     if not token:
         raise _not_logged_in()
-    if from_cookie and request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER) != CSRF_VALUE:
+    if needs_header and request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER) != CSRF_VALUE:
         raise api_error(status.HTTP_403_FORBIDDEN, "csrf")
     try:
         person, access = hub.session(token)
         if person is None:
-            raise _not_logged_in()
+            # Outside, Cloudflare let the address in, but the hub knows no one with it (not confirmed there)
+            raise api_error(status.HTTP_403_FORBIDDEN, "no_access") if outside else _not_logged_in()
         if not access:
             raise api_error(status.HTTP_403_FORBIDDEN, "no_access")
         hub_people.refresh(db, token)

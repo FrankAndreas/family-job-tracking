@@ -47,7 +47,7 @@ Two integrations are optional and can be added later; the app runs fine without 
 
 ### At home: HTTPS and the family login
 The app has no PINs of its own: the family logs in at the family hub (FrankAndreas/family-hub), which runs on the same
-NAS. Since 2026-10-30 the app is home only.
+NAS. From outside, Cloudflare Access is the login (see [From outside](#from-outside-cloudflare-tunnel-and-access)).
 
 1. **Reverse proxy.** DSM: **Control Panel → Login Portal → Advanced → Reverse Proxy → Create**: source HTTPS,
    `jobs.local.<domain>`, port 443; destination HTTP, `localhost`, port 8082. Pick the `*.local.<domain>`
@@ -82,18 +82,26 @@ events with German labels), the raw tables as CSV and the `files/` folder. The C
 UTF-8 BOM, so Excel opens them directly. The export is an archive, not a restore format: back up
 `data/` for that.
 
-## Through the Cloudflare Tunnel: only the e-mail worker
+## From outside: Cloudflare Tunnel and Access
 
-The app is home only (2026-10-30): requests through the tunnel are no login. The tunnel still carries the incoming
-e-mails: the worker posts them to `/api/inbound` on the tunnel's hostname, behind its own Access application with a
-service token, and the app checks `INBOUND_SECRET` on top (see below).
+Away from home the family logs in with Cloudflare Access (an e-mail code); the app passes that login on to the family
+hub, which knows each person by their **confirmed** e-mail address there. A hub cookie arriving through the tunnel
+counts for nothing. The tunnel also carries the incoming e-mails (the worker, below), behind its own Access application.
 
 1. **Tunnel route.** In **Zero Trust → Networks → Connectors → Cloudflare Tunnels**, the tunnel's **Published
-   application routes**: subdomain `bewerbungen`, your domain, path `api/inbound`, service `HTTP`, URL
-   `<NAS_IP>:8082`. Use the NAS's LAN IP if `cloudflared` runs as a container in a bridge network. A **502 Bad
-   Gateway** means `cloudflared` can't reach the port.
-2. **No Access application for people.** If an older setup has one for `bewerbungen.<domain>` without a path, delete
-   it; the worker's application below (path `api/inbound`) stays.
+   application routes**: subdomain `bewerbungen`, your domain, **path empty**, service `HTTP`, URL `<NAS_IP>:<PORT>`
+   (the app's port from `.env`). Use the NAS's LAN IP if `cloudflared` runs as a container in a bridge network. A
+   **502 Bad Gateway** means `cloudflared` can't reach the port.
+2. **Access application for people.** **Access controls → Applications → Create new application → Public DNS**:
+   subdomain `bewerbungen`, your domain, path empty, with a policy that allows the family's e-mail addresses. Note its
+   **Application Audience (AUD) Tag**. (The worker's application below, with the path `api/inbound`, is more specific
+   and keeps `/api/inbound` for the worker.)
+3. **The hub:** add that AUD tag to `CF_AUDIENCE` in the hub's `.env` (comma-separated, next to the hub's own) and
+   restart the hub; give the app's tile the outside address `https://bewerbungen.<domain>`.
+4. Everyone who uses it from outside needs a **confirmed** e-mail address in the hub (the one Cloudflare's code is sent
+   to). Unknown addresses see "Kein Zugang".
+
+"Abmelden" from outside ends the Cloudflare login (`/cdn-cgi/access/logout`).
 
 ## Incoming e-mails (Cloudflare Email Worker)
 

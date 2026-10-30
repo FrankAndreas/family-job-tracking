@@ -62,8 +62,17 @@ def _person(data: dict) -> HubPerson:
     )
 
 
+# A login from outside: Cloudflare Access's token (as "cf:<token>"), which the hub checks against Cloudflare's keys and
+# knows the person by their confirmed e-mail address. Hub tokens are JWTs ("eyJ..."), so the two can't mix
+CLOUDFLARE_PREFIX = "cf:"
+
+
 def _get(path: str, token: str) -> tuple[int, object]:
-    request = urllib.request.Request(f"{hub_url()}{path}", headers={"Authorization": f"Bearer {token}"})
+    if token.startswith(CLOUDFLARE_PREFIX):
+        headers = {"Cf-Access-Jwt-Assertion": token.removeprefix(CLOUDFLARE_PREFIX)}
+    else:
+        headers = {"Authorization": f"Bearer {token}"}
+    request = urllib.request.Request(f"{hub_url()}{path}", headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # nosec B310 - the hub's own URL
             return response.status, json.loads(response.read())

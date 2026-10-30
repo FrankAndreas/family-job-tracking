@@ -16,9 +16,13 @@ api.interceptors.response.use(
     },
 );
 
-// Where the family hub is (HUB_PUBLIC_URL), from the backend
+// Where the family hub is (HUB_PUBLIC_URL), and where "Abmelden" goes (at home the hub, outside Cloudflare Access)
+async function hubLinks(): Promise<{ login_url: string; logout_url: string }> {
+    return (await api.get<{ login_url: string; logout_url: string }>('/api/hub')).data;
+}
+
 async function hubUrl(): Promise<string> {
-    return (await api.get<{ login_url: string }>('/api/hub')).data.login_url;
+    return (await hubLinks()).login_url;
 }
 
 // To the hub's login; with next=, the hub sends the browser back here afterwards
@@ -29,7 +33,12 @@ export async function goToHub(next: string | null = window.location.href): Promi
 
 // "Abmelden": the hub ends the login, for this app and every other family app, then shows its login (back here after)
 export async function goToHubLogout(): Promise<void> {
-    window.location.href = `${await hubUrl()}/logout?next=${encodeURIComponent(window.location.origin)}`;
+    const { logout_url } = await hubLinks();
+    // Outside, Cloudflare's logout (an address on this site) ends the e-mail-code login; at home the hub's page does,
+    // and leads back here after the next login
+    window.location.href = logout_url.startsWith('/')
+        ? logout_url
+        : `${logout_url}?next=${encodeURIComponent(window.location.origin)}`;
 }
 
 // The code of an error the app acts on (no_access, hub_unavailable)
