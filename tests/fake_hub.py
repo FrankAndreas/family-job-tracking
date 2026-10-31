@@ -54,22 +54,24 @@ class FakeHub:
         self.people[name] = hub.HubPerson(person.id, name, person.role, person.color, language)
         self._changed()
 
-    def _person(self, tok: str):
-        return next((p for name, p in self.people.items() if token(name) == tok), None)
+    def _person(self, login: hub.Login):
+        # From outside the app passes Cloudflare's token on; the hub knows the person by it
+        known = cloudflare_token if login.outside_ip is not None else token
+        return next((p for name, p in self.people.items() if known(name) == login.token), None)
 
     # The two calls the app makes, in place of hub.fetch_session and hub.fetch_people
-    def fetch_session(self, tok: str):
+    def fetch_session(self, login: hub.Login):
         if self.down:
             raise hub.HubUnavailable("down")
-        person = self._person(tok)
+        person = self._person(login)
         if person is None:
             return None, False
         return person, person.name in self.access
 
-    def fetch_people(self, tok: str):
+    def fetch_people(self, login: hub.Login):
         if self.down:
             raise hub.HubUnavailable("down")
-        person = self._person(tok)
+        person = self._person(login)
         if person is None or person.name not in self.access:
             return []
         found = sorted((self.people[name] for name in self.access), key=lambda p: p.name.casefold())
@@ -83,6 +85,11 @@ class FakeHub:
 
 def token(name: str) -> str:
     return f"tok-{name}"
+
+
+def cloudflare_token(name: str) -> str:
+    """What Cloudflare Access sends as Cf-Access-Jwt-Assertion after the person's e-mail code (outside)."""
+    return f"cf-{name}"
 
 
 # The hub of the running test (set by conftest's autouse fixture)
