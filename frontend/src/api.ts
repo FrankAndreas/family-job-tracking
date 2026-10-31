@@ -21,14 +21,13 @@ async function hubLinks(): Promise<{ login_url: string; logout_url: string }> {
     return (await api.get<{ login_url: string; logout_url: string }>('/api/hub')).data;
 }
 
-async function hubUrl(): Promise<string> {
-    return (await hubLinks()).login_url;
-}
-
-// To the hub's login; with next=, the hub sends the browser back here afterwards
+// To the hub's login; with next=, the hub sends the browser back here afterwards. Outside (Cloudflare's logout is an
+// address on this site) the page stays and shows the error: the hub's home address is out of reach there, and
+// Cloudflare Access asks for its e-mail code by itself (security review 2026-10-31)
 export async function goToHub(next: string | null = window.location.href): Promise<void> {
-    const login = await hubUrl();
-    window.location.href = next ? `${login}/?next=${encodeURIComponent(next)}` : login;
+    const { login_url, logout_url } = await hubLinks();
+    if (logout_url.startsWith('/')) return;
+    window.location.href = next ? `${login_url}/?next=${encodeURIComponent(next)}` : login_url;
 }
 
 // "Abmelden": the hub ends the login, for this app and every other family app, then shows its login (back here after)

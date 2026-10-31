@@ -101,7 +101,11 @@ counts for nothing. The tunnel also carries the incoming e-mails (the worker, be
 4. Everyone who uses it from outside needs a **confirmed** e-mail address in the hub (the one Cloudflare's code is sent
    to). Unknown addresses see "Kein Zugang".
 
-"Abmelden" from outside ends the Cloudflare login (`/cdn-cgi/access/logout`).
+"Abmelden" from outside ends the Cloudflare login (`/cdn-cgi/access/logout`), for every family app at once.
+
+Never publish step 1 without step 2: the Access application for people is what keeps strangers out. Without it the API
+refuses everyone (no Cloudflare login), but the page and its login screen are open to anyone. The worker's own Access
+application (path `api/inbound`, service token) stays as it is.
 
 ## Incoming e-mails (Cloudflare Email Worker)
 

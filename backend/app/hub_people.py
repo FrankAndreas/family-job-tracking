@@ -29,8 +29,8 @@ def forget() -> None:
     _last = None
 
 
-def refresh(db: Session, token: str, force: bool = False) -> None:
-    """Take the app's people from the hub, at most every REFRESH_SECONDS unless forced. Asked with the token of the
+def refresh(db: Session, login: hub.Login, force: bool = False) -> None:
+    """Take the app's people from the hub, at most every REFRESH_SECONDS unless forced. Asked with the login of the
     person using the app; when the hub answers no one (that person has no access), nothing changes. One refresh at a
     time: other requests meanwhile go on with the people kept here instead of waiting for a slow hub."""
     global _last, _running
@@ -40,7 +40,7 @@ def refresh(db: Session, token: str, force: bool = False) -> None:
         _running = True
     try:
         try:
-            people = hub.fetch_people(token)
+            people = hub.fetch_people(login)
         except hub.HubUnavailable:
             with _lock:
                 _last = time.monotonic() - REFRESH_SECONDS + BACKOFF_SECONDS
