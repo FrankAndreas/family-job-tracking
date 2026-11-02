@@ -7,6 +7,6 @@ python-multipart==0.0.32
 tzdata==2026.5
 
 # Dossier PDF: merging PDFs, and photos (also HEIC from phones) as pages
-pypdf==6.21.2
+pypdf==6.21.4
 Pillow==13.0.0
 pillow-heif==1.8.1
