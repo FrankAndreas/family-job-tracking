@@ -4,7 +4,7 @@ sqlalchemy==2.1.6
 pydantic==2.14.1
 python-multipart==0.0.32
 # Time zone database for zoneinfo; the slim Docker image has none
-tzdata==2026.5
+tzdata==2026.6
 
 # Dossier PDF: merging PDFs, and photos (also HEIC from phones) as pages
 pypdf==6.21.2
