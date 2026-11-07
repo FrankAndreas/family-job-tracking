@@ -42,6 +42,10 @@ cd frontend && npm install && npm run dev         # http://localhost:5173, proxi
 cd cloudflare/email-worker && npm install && npm test
 ```
 
+Asking the hub who is logged in, and the tests' fake hub, come from family-hub's client package (`family-hub-client`,
+pinned to a commit in `backend/requirements.txt`; family-hub's `client/README.md`). A newer hub contract is a new commit
+there.
+
 The design is in `docs/superpowers/specs/2026-10-15-family-job-tracking-design.md`.
 
 ## License

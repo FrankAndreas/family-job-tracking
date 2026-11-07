@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import api, { errorCode, goToHubLogout } from './api';
+import api, { errorCode, goToHubLogout, renewsAtHub } from './api';
 import type { User } from './types';
 
 // in: logged in; no_access: logged in at the family hub, but not given this app; hub_unavailable: the hub (or the NAS)
@@ -28,7 +28,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const check = async () => {
             try {
-                setUser((await api.get<User>('/api/me')).data);
+                const found = await api.get<User>('/api/me');
+                if (renewsAtHub(found.headers)) {
+                    setState('away');
+                    return;
+                }
+                setUser(found.data);
                 setState('in');
             } catch (error) {
                 const code = errorCode(error);
