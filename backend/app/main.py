@@ -30,7 +30,9 @@ upgrade.upgrade(database.engine)
 # A fresh database gets the settings row; the people come from the family hub
 with database.SessionLocal() as _db:
     get_settings(_db)
-logger.info("Family hub: %s (logins at %s, app key %s)", hub.hub_url(), hub.public_url(), hub.app_key())
+logger.info(
+    "Family hub: %s (logins at %s, app key %s)", hub.client.hub_url(), hub.client.public_url(), hub.client.app_key()
+)
 
 # Both integrations are optional; say which ones are on, but never refuse to start
 logger.info(

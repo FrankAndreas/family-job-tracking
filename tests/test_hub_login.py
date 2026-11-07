@@ -1,6 +1,8 @@
 """Logging in through the family hub, and the people the hub gives the app (spec 2026-10-30). Invented people."""
 
 import sqlite3
+import threading
+import time
 
 import fake_hub
 from app import hub as hub_client
@@ -8,7 +10,7 @@ from helpers import ADMIN, bearer, create_user, login, remove_from_hub
 from mails import INBOUND_SECRET, build_mail, post_mail
 from sqlalchemy import create_engine
 
-from app import database, models, reminders, upgrade
+from app import database, hub_people, models, reminders, upgrade
 
 
 def me(client, headers=None):
@@ -308,7 +310,8 @@ def test_a_cloudflare_token_at_home_is_no_login(client):
 def test_the_people_list_from_outside_asks_the_hub_with_cloudflares_login(client, family_hub, monkeypatch):
     family_hub.add("Mia", "CHILD")
     asked = []
-    monkeypatch.setattr(hub_client, "fetch_people", lambda login: asked.append(login) or family_hub.fetch_people(login))
+    ask = hub_client.client.fetch_people
+    monkeypatch.setattr(hub_client.client, "fetch_people", lambda login: asked.append(login) or ask(login))
     found = client.get("/api/users", headers=outside(**bearer(fake_hub.token("Mia"))))
     assert found.status_code == 200 and "Mia" in [u["name"] for u in found.json()]
     assert asked and all(a.token == fake_hub.cloudflare_token(ADMIN) and a.outside_ip for a in asked)
@@ -332,25 +335,54 @@ def test_changes_from_outside_need_the_header_for_uploads_and_deletes_too(client
     assert deleted.status_code == 403 and deleted.json()["detail"] == "csrf"
 
 
-def test_the_hub_gets_the_login_with_the_right_headers(monkeypatch):
-    sent = []
+# App integration review 2026-11-07: someone who only opens this app never opens the hub, which renews a login. In its
+# last week the hub says so, and the page sends the browser through the hub once (frontend api.ts)
+def test_a_login_in_its_last_week_is_renewed_through_the_hub(client, family_hub):
+    assert "X-Hub-Renew" not in me(client, bearer(fake_hub.token(ADMIN))).headers
+    family_hub.renewing.add(ADMIN)
+    hub_client.client.forget()
+    assert me(client, bearer(fake_hub.token(ADMIN))).headers["X-Hub-Renew"] == "1"
+    # A login from outside is Cloudflare's: nothing for the hub to renew
+    assert "X-Hub-Renew" not in me(client, outside()).headers
 
-    class Answer:
-        status = 200
 
-        def __enter__(self):
-            return self
+# App integration review 2026-11-07: a hub that stops answering just as someone's role changed is a 503, not an error
+def test_hub_gone_while_the_role_changes(client, family_hub, monkeypatch):
+    create_user(client, None, "Mama", is_admin=True)
+    family_hub.set_role("Mama", "CHILD")
+    hub_people.refresh(database.SessionLocal(), hub_client.Login(fake_hub.token(ADMIN)))
 
-        def __exit__(self, *_):
-            return False
+    def people_down(path, headers):
+        if path.endswith("/people"):
+            raise hub_client.HubUnavailable("down")
+        return family_hub(path, headers)
 
-        def read(self):
-            return b'{"valid": false}'
+    monkeypatch.setattr(hub_client.client, "transport", people_down)
+    with database.SessionLocal() as db:
+        db.query(models.User).filter(models.User.name == "Mama").update({"is_admin": True})
+        db.commit()
+    response = me(client, bearer(fake_hub.token("Mama")))
+    assert response.status_code == 503 and response.json()["detail"] == "hub_unavailable"
 
-    monkeypatch.setattr(hub_client.urllib.request, "urlopen", lambda request, timeout: sent.append(request) or Answer())
-    hub_client._get("/api/session", hub_client.Login("cloudflares-token", outside_ip="203.0.113.7"))
-    hub_client._get("/api/session", hub_client.Login("hub-token"))
-    outside_call, home_call = (dict(r.header_items()) for r in sent)
-    # From outside the hub also gets Cf-Connecting-Ip, so it ignores any hub token as well (family-hub "For apps")
-    assert outside_call == {"Cf-access-jwt-assertion": "cloudflares-token", "Cf-connecting-ip": "203.0.113.7"}
-    assert home_call == {"Authorization": "Bearer hub-token"}
+
+# App integration review 2026-11-07 (as in the budget app): the first requests of someone given access come together;
+# the one that finds another refreshing waits for it instead of answering "no access"
+def test_a_new_persons_requests_at_the_same_moment(client, family_hub):
+    family_hub.add("Mia", "CHILD")
+    with hub_people._lock:
+        hub_people._running = True
+
+    def the_other_request():
+        time.sleep(0.2)
+        with database.SessionLocal() as db:
+            hub_people._apply(db, hub_client.client.fetch_people(hub_client.Login(fake_hub.token("Mia"))))
+        with hub_people._lock:
+            hub_people._running = False
+            hub_people._lock.notify_all()
+
+    other = threading.Thread(target=the_other_request)
+    other.start()
+    try:
+        assert me(client, bearer(fake_hub.token("Mia"))).status_code == 200
+    finally:
+        other.join()

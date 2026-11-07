@@ -30,6 +30,25 @@ export async function goToHub(next: string | null = window.location.href): Promi
     window.location.href = next ? `${login_url}/?next=${encodeURIComponent(next)}` : login_url;
 }
 
+// The hub login is in its last week (the backend's X-Hub-Renew, on loading the page): once through the hub, which
+// renews it and sends the browser straight back. At most once a day, in case the renewal doesn't take; without
+// storage not at all (app integration review 2026-11-07)
+const RENEWED_AT = 'hubRenewedAt';
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function renewsAtHub(headers: Record<string, unknown>): boolean {
+    if (headers['x-hub-renew'] !== '1') return false;
+    try {
+        const last = Number(localStorage.getItem(RENEWED_AT));
+        if (last && Date.now() - last < DAY_MS) return false;
+        localStorage.setItem(RENEWED_AT, String(Date.now()));
+    } catch {
+        return false;
+    }
+    void goToHub();
+    return true;
+}
+
 // "Abmelden": the hub ends the login, for this app and every other family app, then shows its login (back here after)
 export async function goToHubLogout(): Promise<void> {
     const { logout_url } = await hubLinks();

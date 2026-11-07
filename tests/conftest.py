@@ -39,13 +39,12 @@ def fresh_db(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def family_hub(monkeypatch):
     """A fake family hub instead of the real one (tests/fake_hub.py), with the parent Admin."""
-    fake = fake_hub.FakeHub()
-    monkeypatch.setattr(fake_hub, "current", fake)
-    monkeypatch.setattr(hub, "fetch_session", fake.fetch_session)
-    monkeypatch.setattr(hub, "fetch_people", fake.fetch_people)
+    fake = fake_hub.FakeHub(hub.client, on_change=hub_people.forget)
+    monkeypatch.setattr(fake_hub, "current", fake, raising=False)
+    monkeypatch.setattr(hub.client, "transport", fake)
     fake.add(ADMIN, "PARENT")
     yield fake
-    hub.forget()
+    hub.client.forget()
     hub_people.forget()
 
 
