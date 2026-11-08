@@ -6,8 +6,8 @@ import type { Integration, IntegrationState, Integrations } from '../../types';
 import { BUTTON_SECONDARY, CARD } from '../../ui';
 
 const STATE_STYLES: Record<IntegrationState, { label: string; className: string }> = {
-    ok: { label: 'OK', className: 'bg-emerald-600' },
-    waiting: { label: 'Wartet', className: 'bg-amber-600' },
+    ok: { label: 'OK', className: 'bg-emerald-700' },
+    waiting: { label: 'Wartet', className: 'bg-amber-700' },
     error: { label: 'Fehler', className: 'bg-red-600' },
     not_configured: { label: 'Nicht konfiguriert', className: 'bg-slate-600' },
 };
@@ -53,7 +53,7 @@ function IntegrationCard({ title, integration, help, children }: CardProps) {
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                     {Object.entries(integration.details).map(([key, value]) => (
                         <Fragment key={key}>
-                            <dt className="text-slate-500">{DETAIL_LABELS[key] ?? key}</dt>
+                            <dt className="text-slate-400">{DETAIL_LABELS[key] ?? key}</dt>
                             <dd className={`break-words ${key === 'last_error' && value ? 'text-red-300' : ''}`}>
                                 {formatValue(value)}
                             </dd>

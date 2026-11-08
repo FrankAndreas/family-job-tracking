@@ -71,6 +71,31 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  # Browser tests' npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Wait a few days after a release before proposing it
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    labels:
+      - "dependencies"
+      - "e2e"
+    commit-message:
+      prefix: "chore(e2e)"
+      include: "scope"
+    assignees:
+      - "FrankAndreas"
+    groups:
+      # playwright-core is pinned to @playwright/test's version, so axe uses the same Playwright
+      playwright:
+        patterns:
+          - "@playwright/test"
+          - "playwright-core"
+
   # Cloudflare email worker npm dependencies
   - package-ecosystem: "npm"
     directory: "/cloudflare/email-worker"

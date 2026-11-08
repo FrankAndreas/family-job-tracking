@@ -23,12 +23,12 @@ function AttachmentList({ attachments, onDelete }: { attachments: Attachment[]; 
                     >
                         📎 {a.filename}
                     </button>
-                    <span className="text-xs text-slate-500">{formatSize(a.size)}</span>
+                    <span className="text-xs text-slate-400">{formatSize(a.size)}</span>
                     <button
                         type="button"
                         onClick={() => onDelete(a)}
                         aria-label={`${a.filename} löschen`}
-                        className="text-xs text-slate-500 hover:text-red-400"
+                        className="text-xs text-slate-400 hover:text-red-400"
                     >
                         ✕
                     </button>
@@ -83,14 +83,14 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
             <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-semibold">{EVENT_LABELS[event.type]}</span>
                 <span className="text-sm text-slate-400">{formatDateTime(event.occurred_at)}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-400">
                     {event.created_by_name ? `von ${event.created_by_name}` : email ? 'per E-Mail' : ''}
                 </span>
                 <button
                     type="button"
                     disabled={busy}
                     onClick={startEdit}
-                    className="ml-auto text-xs text-slate-500 hover:text-blue-300"
+                    className="ml-auto text-xs text-slate-400 hover:text-blue-300"
                 >
                     bearbeiten
                 </button>
@@ -98,14 +98,19 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                     type="button"
                     disabled={busy}
                     onClick={deleteEvent}
-                    className="text-xs text-slate-500 hover:text-red-400"
+                    className="text-xs text-slate-400 hover:text-red-400"
                 >
                     löschen
                 </button>
             </div>
             {editing ? (
                 <div className="mt-2 space-y-2">
-                    <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={INPUT}>
+                    <select
+                        value={type}
+                        onChange={(e) => setType(e.target.value as EventType)}
+                        aria-label="Art des Ereignisses"
+                        className={INPUT}
+                    >
                         {EVENT_TYPES.map((t) => (
                             <option key={t} value={t}>
                                 {EVENT_LABELS[t]}
@@ -117,6 +122,7 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         placeholder={REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}
+                        aria-label={REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}
                         className={INPUT}
                     />
                     <div className="flex gap-3 text-sm">

@@ -6,6 +6,7 @@ import { formatDate } from '../labels';
 import { useToast } from '../ToastContext';
 import type { AppSettings, LayoutContext, Suggestion, SuggestionCheck, SuggestionFormValues } from '../types';
 import { BUTTON, BUTTON_SECONDARY, CARD, INPUT } from '../ui';
+import { usePageTitle } from '../pageTitle';
 
 const EMPTY: SuggestionFormValues = { url: '', company: '', position: '', location: '', deadline: '', note: '' };
 
@@ -29,6 +30,7 @@ function mailAddress(inbound: string): string | null {
 }
 
 export default function Suggestions() {
+    usePageTitle('Vorschläge');
     const toast = useToast();
     const { setSuggestionCount } = useOutletContext<LayoutContext>();
     const [items, setItems] = useState<Suggestion[] | null>(null);
@@ -205,7 +207,7 @@ export default function Suggestions() {
                     )}
                 </div>
                 {address && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                         Auch per Mail: Link an <span className="text-slate-300">{address}</span> schicken (von deiner
                         gespeicherten Adresse aus).
                     </p>

@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, formatSize } from '../labels';
 import { useToast } from '../ToastContext';
 import type { AppDocument, DocumentCategory, DossierPreview } from '../types';
 import { BUTTON, CARD, INPUT } from '../ui';
+import { usePageTitle } from '../pageTitle';
 
 function stem(filename: string): string {
     const dot = filename.lastIndexOf('.');
@@ -12,6 +13,7 @@ function stem(filename: string): string {
 }
 
 export default function Documents() {
+    usePageTitle('Unterlagen');
     const toast = useToast();
     const [docs, setDocs] = useState<AppDocument[] | null>(null);
     const [preview, setPreview] = useState<DossierPreview | null>(null);
@@ -85,6 +87,7 @@ export default function Documents() {
             <form onSubmit={submit} className={`${CARD} space-y-3`}>
                 <h2 className="font-semibold">Unterlage hochladen</h2>
                 <input
+                    aria-label="Datei"
                     ref={fileInput}
                     type="file"
                     accept=".pdf,.doc,.docx,.odt,.rtf,.jpg,.jpeg,.png,.webp,.heic,.heif"
@@ -142,11 +145,11 @@ export default function Documents() {
                         <ol className="list-decimal pl-5 text-sm text-slate-300">
                             {preview.parts.map((p) => (
                                 <li key={p.id}>
-                                    {p.title} <span className="text-slate-500">({p.pages} S.)</span>
+                                    {p.title} <span className="text-slate-400">({p.pages} S.)</span>
                                 </li>
                             ))}
                         </ol>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400">
                             {preview.pages} Seiten · etwa {formatSize(preview.size)}
                         </p>
                     </>
@@ -172,7 +175,7 @@ export default function Documents() {
                 return (
                     <section key={c} className="space-y-2">
                         <h2 className="text-lg font-semibold">
-                            {CATEGORY_LABELS[c]} <span className="text-sm text-slate-500">({inCategory.length})</span>
+                            {CATEGORY_LABELS[c]} <span className="text-sm text-slate-400">({inCategory.length})</span>
                         </h2>
                         <ul className="space-y-2">
                             {current.map((d) => (

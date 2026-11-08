@@ -61,9 +61,10 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
         return (
             <li className="space-y-2 rounded-lg border border-slate-700 p-3">
                 <div className="grid gap-2 sm:grid-cols-3">
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} className={INPUT} />
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Titel" className={INPUT} />
                     <select
                         value={category}
+                        aria-label="Kategorie"
                         onChange={(e) => setCategory(e.target.value as DocumentCategory)}
                         className={INPUT}
                     >
@@ -73,9 +74,15 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
                             </option>
                         ))}
                     </select>
-                    <input type="date" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} className={INPUT} />
+                    <input
+                        type="date"
+                        value={issuedOn}
+                        onChange={(e) => setIssuedOn(e.target.value)}
+                        aria-label="Ausgestellt am"
+                        className={INPUT}
+                    />
                 </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={INPUT} />
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} aria-label="Notiz" className={INPUT} />
                 <div className="flex gap-2">
                     <button type="button" className={BUTTON} disabled={busy} onClick={save}>
                         Speichern
@@ -101,8 +108,8 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
                 Im Dossier
             </label>
             <div className="min-w-0 flex-1">
-                <div className={`truncate font-semibold ${doc.outdated ? 'text-slate-500' : ''}`}>{doc.title}</div>
-                <div className="text-xs text-slate-500">
+                <div className={`truncate font-semibold ${doc.outdated ? 'text-slate-400' : ''}`}>{doc.title}</div>
+                <div className="text-xs text-slate-400">
                     {doc.issued_on ? formatDate(doc.issued_on) : 'ohne Datum'} · {formatSize(doc.size)} ·{' '}
                     {doc.created_by_name ?? 'unbekannt'}
                     {!doc.dossier_ok && ' · nicht im Dossier möglich (bitte als PDF hochladen)'}

@@ -38,7 +38,7 @@ export default function MyAccount() {
                         className={INPUT}
                     />
                     {user?.email_from_hub && (
-                        <span className="mt-1 block text-xs text-slate-500">
+                        <span className="mt-1 block text-xs text-slate-400">
                             Kommt aus dem Familien-Hub: dort unter Einstellungen → Personen ändern.
                         </span>
                     )}
