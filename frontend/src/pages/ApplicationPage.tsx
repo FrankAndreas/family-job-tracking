@@ -7,6 +7,7 @@ import EventForm from '../components/EventForm';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
 import { CHANNEL_LABELS } from '../labels';
+import { usePageTitle } from '../pageTitle';
 import { useToast } from '../ToastContext';
 import type { ApplicationDetail, ApplicationFormValues } from '../types';
 import { BUTTON_DANGER, BUTTON_SECONDARY, CARD } from '../ui';
@@ -31,6 +32,7 @@ export default function ApplicationPage() {
     const toast = useToast();
     const { user } = useAuth();
     const [application, setApplication] = useState<ApplicationDetail | null>(null);
+    usePageTitle(application?.company || 'Bewerbung');
     const [editing, setEditing] = useState(false);
 
     // Bumping the version reloads the application, e.g. after an event was added
@@ -124,7 +126,7 @@ export default function ApplicationPage() {
                     )}
                 </div>
             ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                     Für eine eigene Mail-Adresse pro Bewerbung die Eingangsadresse in den Einstellungen setzen.
                 </p>
             )}
@@ -144,13 +146,13 @@ export default function ApplicationPage() {
                                 .filter(([, value]) => value)
                                 .map(([label, value]) => (
                                     <div key={label}>
-                                        <dt className="text-slate-500">{label}</dt>
+                                        <dt className="text-slate-400">{label}</dt>
                                         <dd className="break-words">{value}</dd>
                                     </div>
                                 ))}
                             {application.posting_url && (
                                 <div>
-                                    <dt className="text-slate-500">Inserat</dt>
+                                    <dt className="text-slate-400">Inserat</dt>
                                     <dd className="break-all">
                                         {postingIsLink ? (
                                             <a

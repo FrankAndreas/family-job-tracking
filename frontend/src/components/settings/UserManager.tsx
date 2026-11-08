@@ -48,7 +48,7 @@ export default function UserManager() {
                         <span className="mr-auto font-semibold">
                             {u.name}
                             {u.is_admin && <span className="ml-2 text-xs text-amber-300">Admin</span>}
-                            <span className="ml-2 text-xs font-normal text-slate-500">{u.email ?? 'keine E-Mail'}</span>
+                            <span className="ml-2 text-xs font-normal text-slate-400">{u.email ?? 'keine E-Mail'}</span>
                         </span>
                     </li>
                 ))}

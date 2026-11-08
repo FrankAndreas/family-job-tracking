@@ -42,6 +42,15 @@ cd frontend && npm install && npm run dev         # http://localhost:5173, proxi
 cd cloudflare/email-worker && npm install && npm test
 ```
 
+Browser tests (`e2e/`): the pages in Chromium, desktop and phone, with axe checking every page for accessibility.
+They start the frontend themselves (port 3120) and answer its API requests from `e2e/tests/api.ts`, typed with the
+frontend's types: no backend or hub needed.
+
+```bash
+cd e2e && npm install && npx playwright install chromium
+npm test                                          # npm run type-check: the answers still match the types
+```
+
 Asking the hub who is logged in, and the tests' fake hub, come from family-hub's client package (`family-hub-client`,
 pinned to a commit in `backend/requirements.txt`; family-hub's `client/README.md`). A newer hub contract is a new commit
 there.

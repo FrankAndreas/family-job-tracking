@@ -16,7 +16,12 @@ function RequireAuth({ children }: { children: ReactElement }) {
     const { state } = useAuth();
     if (state === 'no_access') return <NoAccess />;
     if (state === 'hub_unavailable') return <NoAccess hubDown />;
-    if (state !== 'in') return <p className="p-6 text-slate-400">Laden…</p>;
+    if (state !== 'in')
+        return (
+            <main>
+                <p role="status" className="p-6 text-slate-400">Laden…</p>
+            </main>
+        );
     return children;
 }
 

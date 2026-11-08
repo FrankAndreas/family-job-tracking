@@ -5,6 +5,7 @@ import ApplicationForm from '../components/ApplicationForm';
 import StatusBadge from '../components/StatusBadge';
 import { EVENT_LABELS, STATUS_LABELS, formatDate } from '../labels';
 import { useToast } from '../ToastContext';
+import { usePageTitle } from '../pageTitle';
 import type { ApplicationDetail, ApplicationFormValues, ApplicationSummary, Dashboard, Status } from '../types';
 import { BUTTON, CARD, EMPTY_APPLICATION, FIELD } from '../ui';
 
@@ -24,7 +25,7 @@ function ApplicationRow({ item }: { item: ApplicationSummary }) {
             <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold">
                     {item.company}
-                    {item.archived && <span className="ml-2 text-xs font-normal text-slate-500">archiviert</span>}
+                    {item.archived && <span className="ml-2 text-xs font-normal text-slate-400">archiviert</span>}
                 </div>
                 <div className="truncate text-sm text-slate-400">
                     {item.position || '–'}
@@ -53,6 +54,7 @@ export default function Overview() {
     const [query, setQuery] = useState('');
     const [includeArchived, setIncludeArchived] = useState(false);
     const [creating, setCreating] = useState(false);
+    usePageTitle(null);
 
     useEffect(() => {
         api.get<Dashboard>('/api/dashboard')
@@ -79,12 +81,15 @@ export default function Overview() {
 
     return (
         <div className="space-y-6">
+            <h1 className="text-2xl font-bold">Übersicht</h1>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {TILES.map((tile) => (
                     <button
                         key={tile.status}
                         type="button"
                         onClick={() => setStatus(status === tile.status ? '' : tile.status)}
+                        // Filters the list below while pressed: said by the border, and to screen readers by this
+                        aria-pressed={status === tile.status}
                         className={`${CARD} text-left ${status === tile.status ? 'border-blue-400' : ''}`}
                     >
                         <div className="text-3xl font-bold">{dashboard?.counts[tile.status] ?? '–'}</div>
@@ -131,6 +136,7 @@ export default function Overview() {
                     <input
                         type="search"
                         placeholder="Suchen…"
+                        aria-label="Bewerbungen suchen"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         className={`${FIELD} min-w-40 flex-1`}
@@ -138,6 +144,7 @@ export default function Overview() {
                     <select
                         value={status}
                         onChange={(e) => setStatus(e.target.value as Status | '')}
+                        aria-label="Status"
                         className={FIELD}
                     >
                         <option value="">Alle Status</option>

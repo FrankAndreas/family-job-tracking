@@ -101,7 +101,7 @@ export default function SuggestionCard({ suggestion: s, now, onChanged, onEdit }
                 </span>
             </div>
             {s.note && <p className="whitespace-pre-wrap text-sm text-slate-300">{s.note}</p>}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
                 Vorgeschlagen von {s.created_by_name ?? 'unbekannt'} am {formatDateTime(s.created_at)}
                 {s.source === 'mail' && ' (per Mail)'} · {host(s.url)}
             </p>

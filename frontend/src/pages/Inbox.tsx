@@ -5,6 +5,7 @@ import { EVENT_LABELS, formatDateTime, formatSize } from '../labels';
 import { useToast } from '../ToastContext';
 import type { ApplicationSummary, EventType, InboxItem, LayoutContext } from '../types';
 import { BUTTON, BUTTON_SECONDARY, CARD, FIELD } from '../ui';
+import { usePageTitle } from '../pageTitle';
 
 const MAIL_EVENT_TYPES: EventType[] = [
     'mail_received',
@@ -112,7 +113,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                             >
                                 📎 {a.filename}
                             </button>{' '}
-                            <span className="text-xs text-slate-500">{formatSize(a.size)}</span>
+                            <span className="text-xs text-slate-400">{formatSize(a.size)}</span>
                         </li>
                     ))}
                 </ul>
@@ -129,6 +130,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                 <select
                     value={applicationId}
                     onChange={(e) => setApplicationId(e.target.value)}
+                    aria-label="Bewerbung, zu der die Mail gehört"
                     className={`${FIELD} min-w-40 flex-1`}
                 >
                     <option value="">Bewerbung wählen…</option>
@@ -142,6 +144,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                 <select
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value as EventType | '')}
+                    aria-label="Art des Ereignisses"
                     className={FIELD}
                 >
                     <option value="">Typ automatisch</option>
@@ -159,12 +162,14 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                 <div className="flex flex-wrap gap-2">
                     <input
                         placeholder="Firma"
+                        aria-label="Firma"
                         value={company}
                         onChange={(e) => setCompany(e.target.value)}
                         className={`${FIELD} min-w-32 flex-1`}
                     />
                     <input
                         placeholder="Stelle"
+                        aria-label="Stelle"
                         value={position}
                         onChange={(e) => setPosition(e.target.value)}
                         className={`${FIELD} min-w-32 flex-1`}
@@ -191,6 +196,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
 }
 
 export default function Inbox() {
+    usePageTitle('Posteingang');
     const toast = useToast();
     const { setInboxCount } = useOutletContext<LayoutContext>();
     const [items, setItems] = useState<InboxItem[] | null>(null);

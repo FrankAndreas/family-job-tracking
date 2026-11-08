@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../AuthContext';
@@ -32,12 +32,36 @@ export default function Layout() {
         };
     }, [location.pathname]);
 
+    // Moving to another page puts the focus on its heading: a screen reader reads where one is now, and Tab goes on
+    // from there. Not on the first page shown. A page still loading gets it once its heading is there
+    const main = useRef<HTMLElement>(null);
+    const shown = useRef(location.pathname);
+    useEffect(() => {
+        if (shown.current === location.pathname || !main.current) return;
+        shown.current = location.pathname;
+        const area = main.current;
+        const focusHeading = () => {
+            const heading = area.querySelector('h1');
+            if (!heading) return false;
+            heading.tabIndex = -1;
+            heading.focus();
+            return true;
+        };
+        if (focusHeading()) return;
+        const waiting = new MutationObserver(() => {
+            if (focusHeading()) waiting.disconnect();
+        });
+        waiting.observe(area, { childList: true, subtree: true });
+        return () => waiting.disconnect();
+    }, [location.pathname]);
+
     return (
         <div className="min-h-screen">
             <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/90 backdrop-blur">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2 px-4 py-3">
                     <span className="mr-auto font-bold">Bewerbungen</span>
-                    <nav className="flex gap-1">
+                    {/* Wraps on a phone: five links are wider than its screen */}
+                    <nav className="flex flex-wrap gap-1">
                         <NavLink to="/" end className={linkClass}>
                             Übersicht
                         </NavLink>
@@ -61,10 +85,14 @@ export default function Layout() {
                         <NavLink to="/einstellungen" className={linkClass}>
                             Einstellungen
                             {integrationError && (
-                                <span
-                                    className="ml-1 inline-block h-2 w-2 rounded-full bg-red-500"
-                                    title="Eine Integration meldet einen Fehler"
-                                />
+                                <>
+                                    <span
+                                        aria-hidden="true"
+                                        className="ml-1 inline-block h-2 w-2 rounded-full bg-red-500"
+                                        title="Eine Integration meldet einen Fehler"
+                                    />
+                                    <span className="sr-only"> (eine Integration meldet einen Fehler)</span>
+                                </>
                             )}
                         </NavLink>
                     </nav>
@@ -73,7 +101,7 @@ export default function Layout() {
                     </button>
                 </div>
             </header>
-            <main className="mx-auto max-w-4xl px-4 py-6">
+            <main ref={main} className="mx-auto max-w-4xl px-4 py-6">
                 <Outlet context={{ setInboxCount, setSuggestionCount } satisfies LayoutContext} />
             </main>
         </div>

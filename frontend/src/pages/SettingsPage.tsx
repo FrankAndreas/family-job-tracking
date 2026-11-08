@@ -7,8 +7,10 @@ import MyAccount from '../components/settings/MyAccount';
 import UserManager from '../components/settings/UserManager';
 import { useToast } from '../ToastContext';
 import { BUTTON_SECONDARY, CARD } from '../ui';
+import { usePageTitle } from '../pageTitle';
 
 export default function SettingsPage() {
+    usePageTitle('Einstellungen');
     const { user } = useAuth();
     const toast = useToast();
     // Bumped after saving the app settings, so the integration cards reload (e.g. the inbound address warning)

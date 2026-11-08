@@ -5,7 +5,7 @@ import { BUTTON, CARD } from '../ui';
 export default function NoAccess({ hubDown = false }: { hubDown?: boolean }) {
     const { logout, retry } = useAuth();
     return (
-        <div className="mx-auto max-w-md p-6">
+        <main className="mx-auto max-w-md p-6">
             <div className={`${CARD} space-y-4`}>
                 <h1 className="text-xl font-bold">{hubDown ? 'Anmelden geht gerade nicht' : 'Kein Zugang'}</h1>
                 <p className="text-slate-300">
@@ -19,6 +19,6 @@ export default function NoAccess({ hubDown = false }: { hubDown?: boolean }) {
                     <button type="button" className={BUTTON} onClick={() => void logout()}>Als jemand anderes anmelden</button>
                 )}
             </div>
-        </div>
+        </main>
     );
 }

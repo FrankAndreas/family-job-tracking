@@ -8,3 +8,8 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Focused after moving to another page (Layout), for screen readers: no ring around a heading */
+h1[tabindex='-1']:focus {
+  outline: none;
+}
