@@ -57,6 +57,10 @@ there.
 
 The design is in `docs/superpowers/specs/2026-10-15-family-job-tracking-design.md`.
 
+## Pre-commit checks
+
+`.githooks/pre-commit` runs the fast checks CI runs (lint, types) for the parts a commit touches. `npm install` in `frontend/` enables it; or once per clone: `git config core.hooksPath .githooks`. Skip once with `git commit --no-verify`.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
