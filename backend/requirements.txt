@@ -1,13 +1,13 @@
-fastapi==0.162.5
+fastapi==0.165.0
 uvicorn==0.54.0
-sqlalchemy==2.1.8
-pydantic==2.14.3
-python-multipart==0.0.33
+sqlalchemy==2.1.9
+pydantic==2.14.4
+python-multipart==0.0.34
 # Time zone database for zoneinfo; the slim Docker image has none
 tzdata==2026.6
 
 # Dossier PDF: merging PDFs, and photos (also HEIC from phones) as pages
-pypdf==7.0.0
+pypdf==7.1.1
 Pillow==13.0.0
 pillow-heif==1.8.1
 
