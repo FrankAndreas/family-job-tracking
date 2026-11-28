@@ -20,19 +20,19 @@ function ApplicationRow({ item }: { item: ApplicationSummary }) {
     return (
         <Link
             to={`/bewerbungen/${item.id}`}
-            className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3 hover:border-slate-600"
+            className="glass-card flex items-center gap-3 p-3 hover:border-line-strong"
         >
             <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold">
                     {item.company}
-                    {item.archived && <span className="ml-2 text-xs font-normal text-slate-400">archiviert</span>}
+                    {item.archived && <span className="ml-2 text-xs font-normal text-muted">archiviert</span>}
                 </div>
-                <div className="truncate text-sm text-slate-400">
+                <div className="truncate text-sm text-muted">
                     {item.position || '–'}
                     {item.location && ` · ${item.location}`}
                 </div>
             </div>
-            <div className="text-right text-xs text-slate-400">
+            <div className="text-right text-xs text-muted">
                 <StatusBadge status={item.status} closedBy={item.closed_by} />
                 {item.closed_note && <div className="mt-1 max-w-48 truncate italic">{item.closed_note}</div>}
                 <div className="mt-1">
@@ -90,17 +90,17 @@ export default function Overview() {
                         onClick={() => setStatus(status === tile.status ? '' : tile.status)}
                         // Filters the list below while pressed: said by the border, and to screen readers by this
                         aria-pressed={status === tile.status}
-                        className={`${CARD} text-left ${status === tile.status ? 'border-blue-400' : ''}`}
+                        className={`${CARD} text-left ${status === tile.status ? 'border-accent' : ''}`}
                     >
                         <div className="text-3xl font-bold">{dashboard?.counts[tile.status] ?? '–'}</div>
-                        <div className="text-sm text-slate-400">{tile.label}</div>
+                        <div className="text-sm text-muted">{tile.label}</div>
                     </button>
                 ))}
             </div>
 
             {dashboard && dashboard.due.length > 0 && (
-                <section className={`${CARD} border-amber-600/60`}>
-                    <h2 className="mb-2 font-bold text-amber-300">Nachfragen fällig</h2>
+                <section className={`${CARD} border-warning/60`}>
+                    <h2 className="mb-2 font-bold text-warning">Nachfragen fällig</h2>
                     <ul className="space-y-1 text-sm">
                         {dashboard.due.map((d) => (
                             <li key={d.id}>
@@ -108,7 +108,7 @@ export default function Overview() {
                                     {d.company}
                                     {d.position && ` – ${d.position}`}
                                 </Link>
-                                <span className="text-slate-400"> · seit {d.days_since_last} Tagen nichts mehr</span>
+                                <span className="text-muted"> · seit {d.days_since_last} Tagen nichts mehr</span>
                             </li>
                         ))}
                     </ul>
@@ -154,7 +154,7 @@ export default function Overview() {
                             </option>
                         ))}
                     </select>
-                    <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <label className="flex items-center gap-2 text-sm text-ink">
                         <input
                             type="checkbox"
                             checked={includeArchived}
@@ -167,7 +167,7 @@ export default function Overview() {
                     {items.map((item) => (
                         <ApplicationRow key={item.id} item={item} />
                     ))}
-                    {items.length === 0 && <p className="text-slate-400">Keine Bewerbungen gefunden.</p>}
+                    {items.length === 0 && <p className="text-muted">Keine Bewerbungen gefunden.</p>}
                 </div>
             </section>
         </div>

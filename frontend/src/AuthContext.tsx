@@ -1,3 +1,4 @@
+import { applyTheme } from 'family-hub-theme';
 import axios from 'axios';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import api, { errorCode, goToHubLogout, renewsAtHub } from './api';
@@ -33,12 +34,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setState('away');
                     return;
                 }
+                applyTheme(found.data.theme);
                 setUser(found.data);
                 setState('in');
             } catch (error) {
                 const code = errorCode(error);
                 const away = axios.isAxiosError(error) && error.response?.status === 401;
                 setState(code === 'no_access' ? 'no_access' : away ? 'away' : 'hub_unavailable');
+                // Nobody logged in here: the default look
+                applyTheme(null);
             }
         };
         void check();
@@ -46,10 +50,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Reload the current user after their settings change on the server
     const refreshUser = useCallback(async () => {
-        setUser((await api.get<User>('/api/me')).data);
+        const found = (await api.get<User>('/api/me')).data;
+        applyTheme(found.theme);
+        setUser(found);
     }, []);
 
     const logout = useCallback(async () => {
+        // The hub's login page comes next: the default look there, not this person's
+        applyTheme(null);
         await goToHubLogout();
     }, []);
 

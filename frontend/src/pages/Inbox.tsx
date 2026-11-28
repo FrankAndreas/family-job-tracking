@@ -85,16 +85,16 @@ function InboxCard({ item, applications, onDone }: CardProps) {
         <article className={`${CARD} space-y-3`}>
             <header>
                 <div className="font-semibold">{item.subject || '(kein Betreff)'}</div>
-                <div className="text-sm text-slate-400">
+                <div className="text-sm text-muted">
                     {item.from_addr || 'unbekannter Absender'} · {formatDateTime(item.received_at)}
                 </div>
                 {item.parse_error && (
-                    <div className="mt-1 text-sm text-red-300">Konnte nicht gelesen werden: {item.parse_error}</div>
+                    <div className="mt-1 text-sm text-danger">Konnte nicht gelesen werden: {item.parse_error}</div>
                 )}
             </header>
             {item.body_text && (
                 <details className="text-sm">
-                    <summary className="cursor-pointer text-slate-300">Inhalt anzeigen</summary>
+                    <summary className="cursor-pointer text-ink">Inhalt anzeigen</summary>
                     <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap font-sans">{item.body_text}</pre>
                 </details>
             )}
@@ -104,7 +104,7 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                         <li key={a.id}>
                             <button
                                 type="button"
-                                className="text-blue-300 hover:underline"
+                                className="text-accent hover:underline"
                                 onClick={() =>
                                     downloadFile(`/api/attachments/${a.id}`, a.filename).catch((e) =>
                                         toast(errorMessage(e)),
@@ -113,13 +113,13 @@ function InboxCard({ item, applications, onDone }: CardProps) {
                             >
                                 📎 {a.filename}
                             </button>{' '}
-                            <span className="text-xs text-slate-400">{formatSize(a.size)}</span>
+                            <span className="text-xs text-muted">{formatSize(a.size)}</span>
                         </li>
                     ))}
                 </ul>
             )}
             {item.suggestion && (
-                <p className="text-sm text-amber-300">
+                <p className="text-sm text-warning">
                     Gehört vermutlich zu{' '}
                     <Link to={`/bewerbungen/${item.suggestion.id}`} className="underline">
                         {item.suggestion.company}
@@ -217,15 +217,15 @@ export default function Inbox() {
             .catch((e) => toast(errorMessage(e)));
     }, [version, toast, setInboxCount]);
 
-    if (items === null) return <p className="text-slate-400">Laden…</p>;
+    if (items === null) return <p className="text-muted">Laden…</p>;
 
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold">Posteingang</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
                 Mails ohne Bewerbungs-Kennung landen hier. Ordne sie einer Bewerbung zu oder verwirf sie.
             </p>
-            {items.length === 0 && <p className="text-slate-400">Keine offenen Mails.</p>}
+            {items.length === 0 && <p className="text-muted">Keine offenen Mails.</p>}
             {items.map((item) => (
                 <InboxCard key={item.id} item={item} applications={applications} onDone={load} />
             ))}

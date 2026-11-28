@@ -38,17 +38,17 @@ export default function UserManager() {
     return (
         <section className={`${CARD} space-y-3`}>
             <h2 className="text-lg font-bold">Benutzer</h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
                 Die Familie kommt aus dem Familien-Hub: Personen dort hinzufügen, umbenennen und freischalten. Eltern sind
                 hier Admin.
             </p>
-            <ul className="divide-y divide-slate-800">
+            <ul className="divide-y divide-line">
                 {users.map((u) => (
                     <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
                         <span className="mr-auto font-semibold">
                             {u.name}
-                            {u.is_admin && <span className="ml-2 text-xs text-amber-300">Admin</span>}
-                            <span className="ml-2 text-xs font-normal text-slate-400">{u.email ?? 'keine E-Mail'}</span>
+                            {u.is_admin && <span className="ml-2 text-xs text-warning">Admin</span>}
+                            <span className="ml-2 text-xs font-normal text-muted">{u.email ?? 'keine E-Mail'}</span>
                         </span>
                     </li>
                 ))}
@@ -56,11 +56,11 @@ export default function UserManager() {
             {removed.length > 0 && (
                 <div className="space-y-2">
                     <h3 className="font-semibold">Im Familien-Hub entfernt</h3>
-                    <ul className="divide-y divide-slate-800">
+                    <ul className="divide-y divide-line">
                         {removed.map((u) => (
                             <li key={u.id} className="flex flex-wrap items-center gap-x-3 py-2 text-sm">
                                 <span className="mr-auto">{u.name}</span>
-                                <button type="button" onClick={() => void remove(u)} className="text-red-300 hover:underline">
+                                <button type="button" onClick={() => void remove(u)} className="text-danger hover:underline">
                                     Daten löschen
                                 </button>
                             </li>

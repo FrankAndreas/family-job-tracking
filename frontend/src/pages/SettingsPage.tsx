@@ -41,7 +41,7 @@ export default function SettingsPage() {
             )}
             <section className={`${CARD} space-y-2`}>
                 <h2 className="text-lg font-bold">Daten exportieren</h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                     Alle Bewerbungen, Ereignisse und Mails als CSV, dazu alle Dateien, in einem ZIP.
                 </p>
                 <button type="button" disabled={exporting} onClick={exportData} className={BUTTON_SECONDARY}>

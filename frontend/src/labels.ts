@@ -9,14 +9,15 @@ export const STATUS_LABELS: Record<Status, string> = {
     closed_withdrawn: 'Zurückgezogen',
 };
 
-// White text on them: 4.5:1 or more (accessibility review 2026-11-08; amber-600 and emerald-600 gave 3.2 and 3.8)
+// Fill and text together, 4.5:1 or more (accessibility review 2026-11-08): the theme's state colours are light, so
+// the text on them is the page's dark colour (themes 2026-11-28)
 export const STATUS_COLORS: Record<Status, string> = {
-    draft: 'bg-slate-600',
-    open: 'bg-blue-600',
-    in_contact: 'bg-amber-700',
-    closed_offer: 'bg-emerald-700',
-    closed_rejection: 'bg-red-700',
-    closed_withdrawn: 'bg-slate-500',
+    draft: 'bg-pressed text-ink',
+    open: 'bg-accent text-page',
+    in_contact: 'bg-warning text-page',
+    closed_offer: 'bg-success text-page',
+    closed_rejection: 'bg-danger text-page',
+    closed_withdrawn: 'bg-pressed text-ink',
 };
 
 export const EVENT_LABELS: Record<EventType, string> = {

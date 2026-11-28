@@ -5,7 +5,7 @@ import { useToast } from '../ToastContext';
 import type { AppDocument, DocumentCategory } from '../types';
 import { BUTTON, BUTTON_DANGER, BUTTON_SECONDARY, INPUT } from '../ui';
 
-const SMALL = 'rounded border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40';
+const SMALL = 'rounded border border-line px-2 py-1 text-xs text-ink hover:bg-hover disabled:opacity-40';
 
 interface Props {
     doc: AppDocument;
@@ -59,7 +59,7 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
 
     if (editing) {
         return (
-            <li className="space-y-2 rounded-lg border border-slate-700 p-3">
+            <li className="space-y-2 rounded-lg border border-line p-3">
                 <div className="grid gap-2 sm:grid-cols-3">
                     <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Titel" className={INPUT} />
                     <select
@@ -96,8 +96,8 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
     }
 
     return (
-        <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 p-3">
-            <label className="flex items-center gap-1 text-xs text-slate-400">
+        <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line p-3">
+            <label className="flex items-center gap-1 text-xs text-muted">
                 <input
                     type="checkbox"
                     checked={doc.in_dossier}
@@ -108,13 +108,13 @@ export default function DocumentRow({ doc, first, last, onChanged }: Props) {
                 Im Dossier
             </label>
             <div className="min-w-0 flex-1">
-                <div className={`truncate font-semibold ${doc.outdated ? 'text-slate-400' : ''}`}>{doc.title}</div>
-                <div className="text-xs text-slate-400">
+                <div className={`truncate font-semibold ${doc.outdated ? 'text-muted' : ''}`}>{doc.title}</div>
+                <div className="text-xs text-muted">
                     {doc.issued_on ? formatDate(doc.issued_on) : 'ohne Datum'} · {formatSize(doc.size)} ·{' '}
                     {doc.created_by_name ?? 'unbekannt'}
                     {!doc.dossier_ok && ' · nicht im Dossier möglich (bitte als PDF hochladen)'}
                 </div>
-                {doc.note && <div className="whitespace-pre-wrap text-xs text-slate-400">{doc.note}</div>}
+                {doc.note && <div className="whitespace-pre-wrap text-xs text-muted">{doc.note}</div>}
             </div>
             <div className="flex flex-wrap gap-1">
                 <button type="button" className={SMALL} disabled={busy || first} onClick={() => move('up')} title="Nach oben">

@@ -23,7 +23,7 @@ function title(s: Suggestion): string {
 function Deadline({ s, now }: { s: Suggestion; now: number }) {
     if (!s.deadline) return null;
     const soon = !s.deadline_passed && new Date(s.deadline).getTime() - now < SOON_MS;
-    const color = s.deadline_passed ? 'text-red-400' : soon ? 'text-amber-400' : 'text-slate-400';
+    const color = s.deadline_passed ? 'text-danger' : soon ? 'text-warning' : 'text-muted';
     return (
         <span className={color}>
             {s.deadline_passed ? 'Frist abgelaufen' : 'Frist'} {formatDate(s.deadline)}
@@ -92,21 +92,21 @@ export default function SuggestionCard({ suggestion: s, now, onChanged, onEdit }
     return (
         <div className={`${CARD} space-y-2`}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <a href={s.url} target="_blank" rel="noreferrer" className="font-semibold text-blue-300 hover:underline">
+                <a href={s.url} target="_blank" rel="noreferrer" className="font-semibold text-accent hover:underline">
                     {title(s)}
                 </a>
-                {s.location && <span className="text-sm text-slate-400">{s.location}</span>}
+                {s.location && <span className="text-sm text-muted">{s.location}</span>}
                 <span className="text-sm">
                     <Deadline s={s} now={now} />
                 </span>
             </div>
-            {s.note && <p className="whitespace-pre-wrap text-sm text-slate-300">{s.note}</p>}
-            <p className="text-xs text-slate-400">
+            {s.note && <p className="whitespace-pre-wrap text-sm text-ink">{s.note}</p>}
+            <p className="text-xs text-muted">
                 Vorgeschlagen von {s.created_by_name ?? 'unbekannt'} am {formatDateTime(s.created_at)}
                 {s.source === 'mail' && ' (per Mail)'} · {host(s.url)}
             </p>
             {s.status === 'applied' && (
-                <p className="text-sm text-emerald-400">
+                <p className="text-sm text-success">
                     Beworben
                     {s.application ? (
                         <>
@@ -118,7 +118,7 @@ export default function SuggestionCard({ suggestion: s, now, onChanged, onEdit }
                 </p>
             )}
             {s.status === 'declined' && (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                     Nicht interessiert{s.decline_reason && `: ${s.decline_reason}`} ({s.decided_by_name ?? 'unbekannt'})
                 </p>
             )}

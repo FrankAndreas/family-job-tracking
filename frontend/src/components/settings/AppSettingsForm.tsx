@@ -32,7 +32,7 @@ export default function AppSettingsForm({ onSaved }: { onSaved: () => void }) {
             <h2 className="text-lg font-bold">App-Einstellungen</h2>
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-3">
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Nachfragen nach (Tagen)</span>
+                    <span className="mb-1 block text-muted">Nachfragen nach (Tagen)</span>
                     <input
                         type="number"
                         min={1}
@@ -44,7 +44,7 @@ export default function AppSettingsForm({ onSaved }: { onSaved: () => void }) {
                     />
                 </label>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Erinnerung um</span>
+                    <span className="mb-1 block text-muted">Erinnerung um</span>
                     <input
                         type="time"
                         required
@@ -54,7 +54,7 @@ export default function AppSettingsForm({ onSaved }: { onSaved: () => void }) {
                     />
                 </label>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Eingangsadresse</span>
+                    <span className="mb-1 block text-muted">Eingangsadresse</span>
                     <input
                         type="email"
                         placeholder="bewerbungen@deine-domain.ch"

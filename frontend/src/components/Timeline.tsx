@@ -14,7 +14,7 @@ function AttachmentList({ attachments, onDelete }: { attachments: Attachment[]; 
                 <li key={a.id} className="flex items-center gap-2">
                     <button
                         type="button"
-                        className="truncate text-blue-300 hover:underline"
+                        className="truncate text-accent hover:underline"
                         onClick={() =>
                             downloadFile(`/api/attachments/${a.id}`, a.filename).catch((e) =>
                                 toast(errorMessage(e, 'Download fehlgeschlagen')),
@@ -23,12 +23,12 @@ function AttachmentList({ attachments, onDelete }: { attachments: Attachment[]; 
                     >
                         📎 {a.filename}
                     </button>
-                    <span className="text-xs text-slate-400">{formatSize(a.size)}</span>
+                    <span className="text-xs text-muted">{formatSize(a.size)}</span>
                     <button
                         type="button"
                         onClick={() => onDelete(a)}
                         aria-label={`${a.filename} löschen`}
-                        className="text-xs text-slate-400 hover:text-red-400"
+                        className="text-xs text-muted hover:text-danger"
                     >
                         ✕
                     </button>
@@ -78,19 +78,19 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
     };
 
     return (
-        <li className="relative border-l-2 border-slate-700 pb-5 pl-4">
-            <span className="absolute -left-[7px] top-1.5 h-3 w-3 rounded-full bg-blue-500" />
+        <li className="relative border-l-2 border-line pb-5 pl-4">
+            <span className="absolute -left-[7px] top-1.5 h-3 w-3 rounded-full bg-accent" />
             <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-semibold">{EVENT_LABELS[event.type]}</span>
-                <span className="text-sm text-slate-400">{formatDateTime(event.occurred_at)}</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-sm text-muted">{formatDateTime(event.occurred_at)}</span>
+                <span className="text-xs text-muted">
                     {event.created_by_name ? `von ${event.created_by_name}` : email ? 'per E-Mail' : ''}
                 </span>
                 <button
                     type="button"
                     disabled={busy}
                     onClick={startEdit}
-                    className="ml-auto text-xs text-slate-400 hover:text-blue-300"
+                    className="ml-auto text-xs text-muted hover:text-accent"
                 >
                     bearbeiten
                 </button>
@@ -98,7 +98,7 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                     type="button"
                     disabled={busy}
                     onClick={deleteEvent}
-                    className="text-xs text-slate-400 hover:text-red-400"
+                    className="text-xs text-muted hover:text-danger"
                 >
                     löschen
                 </button>
@@ -126,10 +126,10 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                         className={INPUT}
                     />
                     <div className="flex gap-3 text-sm">
-                        <button type="button" disabled={busy} onClick={save} className="text-blue-300 hover:underline">
+                        <button type="button" disabled={busy} onClick={save} className="text-accent hover:underline">
                             Speichern
                         </button>
-                        <button type="button" onClick={() => setEditing(false)} className="text-slate-400 hover:underline">
+                        <button type="button" onClick={() => setEditing(false)} className="text-muted hover:underline">
                             Abbrechen
                         </button>
                     </div>
@@ -139,9 +139,9 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
             )}
             <AttachmentList attachments={event.attachments} onDelete={deleteAttachment} />
             {email && (
-                <details className="mt-2 rounded-lg bg-slate-800/50 p-2 text-sm">
-                    <summary className="cursor-pointer text-slate-300">Mail anzeigen</summary>
-                    <div className="mt-2 space-y-1 text-xs text-slate-400">
+                <details className="mt-2 rounded-lg bg-surface p-2 text-sm">
+                    <summary className="cursor-pointer text-ink">Mail anzeigen</summary>
+                    <div className="mt-2 space-y-1 text-xs text-muted">
                         <div>Von: {email.from_addr || '–'}</div>
                         <div>An: {email.to_addrs || '–'}</div>
                     </div>
@@ -149,7 +149,7 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
                     <AttachmentList attachments={email.attachments} onDelete={deleteAttachment} />
                     <button
                         type="button"
-                        className="mt-2 text-xs text-blue-300 hover:underline"
+                        className="mt-2 text-xs text-accent hover:underline"
                         onClick={() =>
                             downloadFile(`/api/emails/${email.id}/raw`, `mail-${email.id}.eml`).catch((e) =>
                                 toast(errorMessage(e, 'Download fehlgeschlagen')),
@@ -165,7 +165,7 @@ function TimelineItem({ event, onChanged }: { event: TimelineEvent; onChanged: (
 }
 
 export default function Timeline({ events, onChanged }: { events: TimelineEvent[]; onChanged: () => void }) {
-    if (events.length === 0) return <p className="text-slate-400">Noch keine Ereignisse.</p>;
+    if (events.length === 0) return <p className="text-muted">Noch keine Ereignisse.</p>;
     return (
         <ol className="ml-2">
             {events.map((event) => (

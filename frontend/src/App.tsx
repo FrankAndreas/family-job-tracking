@@ -19,7 +19,7 @@ function RequireAuth({ children }: { children: ReactElement }) {
     if (state !== 'in')
         return (
             <main>
-                <p role="status" className="p-6 text-slate-400">Laden…</p>
+                <p role="status" className="p-6 text-muted">Laden…</p>
             </main>
         );
     return children;

@@ -44,14 +44,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     {errors.map((t) => (
                         <div
                             key={t.id}
-                            className="flex items-start gap-3 rounded-lg bg-red-700 py-2 pl-4 pr-2 text-sm text-white shadow-lg"
+                            className="flex items-start gap-3 rounded-lg bg-danger py-2 pl-4 pr-2 text-sm text-page shadow-lg"
                         >
                             <span className="py-1">{t.text}</span>
                             <button
                                 type="button"
                                 onClick={() => close(t.id)}
                                 aria-label="Meldung schliessen"
-                                className="min-h-8 min-w-8 rounded hover:bg-red-800"
+                                className="min-h-8 min-w-8 rounded hover:bg-danger"
                             >
                                 ✕
                             </button>
@@ -60,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
                 <div role="status" className="flex flex-col items-center gap-2">
                     {successes.map((t) => (
-                        <div key={t.id} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white shadow-lg">
+                        <div key={t.id} className="rounded-lg bg-success px-4 py-2 text-sm text-page shadow-lg">
                             {t.text}
                         </div>
                     ))}

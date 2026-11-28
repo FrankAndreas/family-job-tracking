@@ -4,15 +4,20 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run theme:copy",
     "dev": "vite",
+    "prebuild": "npm run theme:copy",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0 && npm run check-colors",
     "preview": "vite preview",
     "type-check": "tsc -b",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "theme:copy": "node -e \"const fs=require('fs');fs.mkdirSync('public',{recursive:true});fs.copyFileSync('node_modules/family-hub-theme/theme-init.js','public/theme-init.js')\"",
+    "check-colors": "node scripts/check-colors.mjs --self-test && node scripts/check-colors.mjs"
   },
   "dependencies": {
     "axios": "^1.21.1",
+    "family-hub-theme": "https://github.com/FrankAndreas/family-hub/releases/download/theme-v1.0.0/family-hub-theme-1.0.0.tgz",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.6"

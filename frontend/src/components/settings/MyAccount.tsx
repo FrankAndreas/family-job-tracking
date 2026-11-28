@@ -27,7 +27,7 @@ export default function MyAccount() {
             <h2 className="text-lg font-bold">Mein Konto ({user?.name})</h2>
             <form onSubmit={saveProfile} className="space-y-3">
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">
+                    <span className="mb-1 block text-muted">
                         E-Mail-Adresse (für Erinnerungen; Mails von dieser Adresse gelten als „gesendet“)
                     </span>
                     <input
@@ -38,7 +38,7 @@ export default function MyAccount() {
                         className={INPUT}
                     />
                     {user?.email_from_hub && (
-                        <span className="mt-1 block text-xs text-slate-400">
+                        <span className="mt-1 block text-xs text-muted">
                             Kommt aus dem Familien-Hub: dort unter Einstellungen → Personen ändern.
                         </span>
                     )}
@@ -55,7 +55,7 @@ export default function MyAccount() {
                     Speichern
                 </button>
             </form>
-            <p className="text-sm text-slate-400">Name, PIN und das Abmelden auf allen Geräten sind im Familien-Hub.</p>
+            <p className="text-sm text-muted">Name, PIN und das Abmelden auf allen Geräten sind im Familien-Hub.</p>
         </section>
     );
 }

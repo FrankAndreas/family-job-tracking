@@ -22,7 +22,8 @@ export default defineConfig({
     ],
     webServer: {
         // An API proxy to nowhere: every /api request is answered by the test, one it doesn't know fails
-        command: 'npx vite --port 3120 --strictPort',
+        // theme:copy as predev does: the page loads /theme-init.js first
+        command: 'npm run theme:copy && npx vite --port 3120 --strictPort',
         cwd: path.resolve(__dirname, '..', 'frontend'),
         url: FRONTEND,
         env: { API_PROXY: 'http://127.0.0.1:9' },

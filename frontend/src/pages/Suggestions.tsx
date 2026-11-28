@@ -131,7 +131,7 @@ export default function Suggestions() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    if (items === null) return <p className="text-slate-400">Laden…</p>;
+    if (items === null) return <p className="text-muted">Laden…</p>;
     const open = items.filter((s) => s.status === 'open').sort(byDeadline);
     const done = items.filter((s) => s.status !== 'open');
 
@@ -141,7 +141,7 @@ export default function Suggestions() {
             <form onSubmit={submit} className={`${CARD} space-y-3`}>
                 <h2 className="font-semibold">{editingId === null ? 'Lehrstelle vorschlagen' : 'Vorschlag bearbeiten'}</h2>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Link zur Lehrstelle</span>
+                    <span className="mb-1 block text-muted">Link zur Lehrstelle</span>
                     <input
                         type="text"
                         inputMode="url"
@@ -159,7 +159,7 @@ export default function Suggestions() {
                     />
                 </label>
                 {check && check.duplicates.length > 0 && (
-                    <ul className="rounded-lg border border-amber-700 bg-amber-900/30 p-2 text-sm text-amber-200">
+                    <ul className="rounded-lg border border-warning bg-warning/30 p-2 text-sm text-warning">
                         {check.duplicates.map((d) => (
                             <li key={`${d.kind}-${d.id}`}>
                                 {d.kind === 'suggestion'
@@ -171,19 +171,19 @@ export default function Suggestions() {
                 )}
                 <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Stelle</span>
+                        <span className="mb-1 block text-muted">Stelle</span>
                         <input value={values.position} onChange={(e) => set('position')(e.target.value)} className={INPUT} />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Firma</span>
+                        <span className="mb-1 block text-muted">Firma</span>
                         <input value={values.company} onChange={(e) => set('company')(e.target.value)} className={INPUT} />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Ort</span>
+                        <span className="mb-1 block text-muted">Ort</span>
                         <input value={values.location} onChange={(e) => set('location')(e.target.value)} className={INPUT} />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Bewerbungsfrist</span>
+                        <span className="mb-1 block text-muted">Bewerbungsfrist</span>
                         <input
                             type="date"
                             value={values.deadline}
@@ -193,7 +193,7 @@ export default function Suggestions() {
                     </label>
                 </div>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Notiz</span>
+                    <span className="mb-1 block text-muted">Notiz</span>
                     <textarea value={values.note} onChange={(e) => set('note')(e.target.value)} rows={2} className={INPUT} />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -207,22 +207,22 @@ export default function Suggestions() {
                     )}
                 </div>
                 {address && (
-                    <p className="text-xs text-slate-400">
-                        Auch per Mail: Link an <span className="text-slate-300">{address}</span> schicken (von deiner
+                    <p className="text-xs text-muted">
+                        Auch per Mail: Link an <span className="text-ink">{address}</span> schicken (von deiner
                         gespeicherten Adresse aus).
                     </p>
                 )}
             </form>
 
             <h2 className="text-lg font-semibold">Offen ({open.length})</h2>
-            {open.length === 0 && <p className="text-slate-400">Keine offenen Vorschläge.</p>}
+            {open.length === 0 && <p className="text-muted">Keine offenen Vorschläge.</p>}
             {open.map((s) => (
                 <SuggestionCard key={s.id} suggestion={s} now={now} onChanged={load} onEdit={edit} />
             ))}
 
             {done.length > 0 && (
                 <div className="space-y-3">
-                    <button type="button" className="text-sm text-slate-400 hover:text-white" onClick={() => setShowDone((v) => !v)}>
+                    <button type="button" className="text-sm text-muted hover:text-ink" onClick={() => setShowDone((v) => !v)}>
                         {showDone ? '▾' : '▸'} Erledigt ({done.length})
                     </button>
                     {showDone &&

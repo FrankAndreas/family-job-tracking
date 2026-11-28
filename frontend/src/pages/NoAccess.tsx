@@ -8,7 +8,7 @@ export default function NoAccess({ hubDown = false }: { hubDown?: boolean }) {
         <main className="mx-auto max-w-md p-6">
             <div className={`${CARD} space-y-4`}>
                 <h1 className="text-xl font-bold">{hubDown ? 'Anmelden geht gerade nicht' : 'Kein Zugang'}</h1>
-                <p className="text-slate-300">
+                <p className="text-ink">
                     {hubDown
                         ? 'Der Familien-Hub oder diese App antwortet gerade nicht (vielleicht startet das NAS neu).'
                         : 'Bitte einen Elternteil, dir im Familien-Hub Zugang zur Bewerbungs-App zu geben.'}
