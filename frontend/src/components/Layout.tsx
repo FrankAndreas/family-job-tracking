@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 import type { Dashboard, Integrations, LayoutContext } from '../types';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`;
+    `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-pressed text-ink' : 'text-muted hover:text-ink'}`;
 
 export default function Layout() {
     const { user, logout } = useAuth();
@@ -57,7 +57,7 @@ export default function Layout() {
 
     return (
         <div className="min-h-screen">
-            <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/90 backdrop-blur">
+            <header className="sticky top-0 z-10 border-b border-line bg-page/90 backdrop-blur">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2 px-4 py-3">
                     <span className="mr-auto font-bold">Bewerbungen</span>
                     {/* Wraps on a phone: five links are wider than its screen */}
@@ -68,7 +68,7 @@ export default function Layout() {
                         <NavLink to="/vorschlaege" className={linkClass}>
                             Vorschläge
                             {suggestionCount > 0 && (
-                                <span className="ml-1 rounded-full bg-blue-600 px-2 text-xs text-white">
+                                <span className="ml-1 rounded-full bg-accent px-2 text-xs text-page">
                                     {suggestionCount}
                                 </span>
                             )}
@@ -76,7 +76,7 @@ export default function Layout() {
                         <NavLink to="/posteingang" className={linkClass}>
                             Posteingang
                             {inboxCount > 0 && (
-                                <span className="ml-1 rounded-full bg-blue-600 px-2 text-xs text-white">{inboxCount}</span>
+                                <span className="ml-1 rounded-full bg-accent px-2 text-xs text-page">{inboxCount}</span>
                             )}
                         </NavLink>
                         <NavLink to="/unterlagen" className={linkClass}>
@@ -88,7 +88,7 @@ export default function Layout() {
                                 <>
                                     <span
                                         aria-hidden="true"
-                                        className="ml-1 inline-block h-2 w-2 rounded-full bg-red-500"
+                                        className="ml-1 inline-block h-2 w-2 rounded-full bg-danger"
                                         title="Eine Integration meldet einen Fehler"
                                     />
                                     <span className="sr-only"> (eine Integration meldet einen Fehler)</span>
@@ -96,7 +96,7 @@ export default function Layout() {
                             )}
                         </NavLink>
                     </nav>
-                    <button type="button" onClick={() => void logout()} className="text-sm text-slate-400 hover:text-white">
+                    <button type="button" onClick={() => void logout()} className="text-sm text-muted hover:text-ink">
                         {user?.name} abmelden
                     </button>
                 </div>

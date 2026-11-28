@@ -8,7 +8,7 @@
     "dev": "vite",
     "prebuild": "npm run theme:copy",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0 && npm run check-colors",
     "preview": "vite preview",
     "type-check": "tsc -b",
     "prepare": "git config core.hooksPath .githooks || true",

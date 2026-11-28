@@ -48,7 +48,7 @@ export default function ApplicationForm({ initial, submitLabel, onSubmit, onCanc
             <div className="grid gap-3 sm:grid-cols-2">
                 {FIELDS.map(([key, label, type]) => (
                     <label key={key} className="block text-sm">
-                        <span className="mb-1 block text-slate-400">{label}</span>
+                        <span className="mb-1 block text-muted">{label}</span>
                         <input
                             type={type}
                             required={key === 'company'}
@@ -59,7 +59,7 @@ export default function ApplicationForm({ initial, submitLabel, onSubmit, onCanc
                     </label>
                 ))}
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Kanal</span>
+                    <span className="mb-1 block text-muted">Kanal</span>
                     <select
                         value={values.channel}
                         onChange={(e) => set('channel', e.target.value as Channel)}
@@ -74,7 +74,7 @@ export default function ApplicationForm({ initial, submitLabel, onSubmit, onCanc
                 </label>
             </div>
             <label className="block text-sm">
-                <span className="mb-1 block text-slate-400">Notizen</span>
+                <span className="mb-1 block text-muted">Notizen</span>
                 <textarea rows={3} value={values.notes} onChange={(e) => set('notes', e.target.value)} className={INPUT} />
             </label>
             <div className="flex gap-2">

@@ -64,10 +64,10 @@ export default function EventForm({ applicationId, defaultType, onSaved }: Props
     }
 
     return (
-        <form onSubmit={submit} className="space-y-3 rounded-xl border border-slate-700 p-4">
+        <form onSubmit={submit} className="space-y-3 rounded-xl border border-line p-4">
             <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Was ist passiert?</span>
+                    <span className="mb-1 block text-muted">Was ist passiert?</span>
                     <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={INPUT}>
                         {EVENT_TYPES.map((t) => (
                             <option key={t} value={t}>
@@ -77,7 +77,7 @@ export default function EventForm({ applicationId, defaultType, onSaved }: Props
                     </select>
                 </label>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Wann?</span>
+                    <span className="mb-1 block text-muted">Wann?</span>
                     <input
                         type="datetime-local"
                         required
@@ -88,7 +88,7 @@ export default function EventForm({ applicationId, defaultType, onSaved }: Props
                 </label>
             </div>
             <label className="block text-sm">
-                <span className="mb-1 block text-slate-400">{REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}</span>
+                <span className="mb-1 block text-muted">{REASON_EVENTS.includes(type) ? 'Grund' : 'Notiz'}</span>
                 <textarea
                     rows={2}
                     value={note}
@@ -108,7 +108,7 @@ export default function EventForm({ applicationId, defaultType, onSaved }: Props
                 <button type="button" onClick={() => fileInput.current?.click()} className={BUTTON_SECONDARY}>
                     Dateien wählen
                 </button>
-                {files.length > 0 && <span className="ml-2 text-slate-400">{files.map((f) => f.name).join(', ')}</span>}
+                {files.length > 0 && <span className="ml-2 text-muted">{files.map((f) => f.name).join(', ')}</span>}
             </div>
             <div className="flex gap-2">
                 <button type="submit" disabled={busy} className={BUTTON}>

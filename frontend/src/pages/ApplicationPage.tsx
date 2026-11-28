@@ -45,7 +45,7 @@ export default function ApplicationPage() {
             .catch((e) => toast(errorMessage(e, 'Bewerbung nicht gefunden')));
     }, [id, version, toast]);
 
-    if (!application) return <p className="text-slate-400">Laden…</p>;
+    if (!application) return <p className="text-muted">Laden…</p>;
 
     const save = async (values: ApplicationFormValues) => {
         await api.patch(`/api/applications/${application.id}`, values);
@@ -99,25 +99,25 @@ export default function ApplicationPage() {
             <div className="flex flex-wrap items-start gap-3">
                 <div className="mr-auto">
                     <h1 className="text-2xl font-bold">{application.company}</h1>
-                    <p className="text-slate-400">{application.position || 'Stelle nicht angegeben'}</p>
+                    <p className="text-muted">{application.position || 'Stelle nicht angegeben'}</p>
                 </div>
                 <div className="text-right">
                     <StatusBadge status={application.status} closedBy={application.closed_by} />
                     {application.closed_note && (
-                        <p className="mt-1 max-w-xs text-sm italic text-slate-400">{application.closed_note}</p>
+                        <p className="mt-1 max-w-xs text-sm italic text-muted">{application.closed_note}</p>
                     )}
                 </div>
             </div>
 
             {application.mail_address ? (
                 <div className={`${CARD} flex flex-wrap items-center gap-2 text-sm`}>
-                    <span className="text-slate-400">Mails an / BCC:</span>
+                    <span className="text-muted">Mails an / BCC:</span>
                     <code className="break-all">{application.mail_address}</code>
-                    <button type="button" onClick={copyAddress} className="ml-auto text-blue-300 hover:underline">
+                    <button type="button" onClick={copyAddress} className="ml-auto text-accent hover:underline">
                         Kopieren
                     </button>
                     {user && !user.email && (
-                        <p className="w-full text-amber-300">
+                        <p className="w-full text-warning">
                             Deine E-Mail-Adresse fehlt: Mails von dir zählen sonst als erhalten statt gesendet.{' '}
                             <Link to="/einstellungen" className="underline">
                                 Unter Mein Konto speichern
@@ -126,7 +126,7 @@ export default function ApplicationPage() {
                     )}
                 </div>
             ) : (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                     Für eine eigene Mail-Adresse pro Bewerbung die Eingangsadresse in den Einstellungen setzen.
                 </p>
             )}
@@ -146,20 +146,20 @@ export default function ApplicationPage() {
                                 .filter(([, value]) => value)
                                 .map(([label, value]) => (
                                     <div key={label}>
-                                        <dt className="text-slate-400">{label}</dt>
+                                        <dt className="text-muted">{label}</dt>
                                         <dd className="break-words">{value}</dd>
                                     </div>
                                 ))}
                             {application.posting_url && (
                                 <div>
-                                    <dt className="text-slate-400">Inserat</dt>
+                                    <dt className="text-muted">Inserat</dt>
                                     <dd className="break-all">
                                         {postingIsLink ? (
                                             <a
                                                 href={application.posting_url}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="text-blue-300 hover:underline"
+                                                className="text-accent hover:underline"
                                             >
                                                 {application.posting_url}
                                             </a>

@@ -9,7 +9,7 @@ interface Props {
 export default function StatusBadge({ status, closedBy }: Props) {
     const label = (status === 'closed_rejection' && closedBy && REJECTION_LABELS[closedBy]) || STATUS_LABELS[status];
     return (
-        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold text-white ${STATUS_COLORS[status]}`}>
+        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[status]}`}>
             {label}
         </span>
     );

@@ -78,7 +78,7 @@ export default function Documents() {
         }
     };
 
-    if (docs === null) return <p className="text-slate-400">Laden…</p>;
+    if (docs === null) return <p className="text-muted">Laden…</p>;
 
     return (
         <div className="space-y-4">
@@ -98,11 +98,11 @@ export default function Documents() {
                         if (chosen && (!title || (file && title === stem(file.name)))) setTitle(stem(chosen.name));
                         setFile(chosen);
                     }}
-                    className="block w-full text-sm text-slate-300"
+                    className="block w-full text-sm text-ink"
                 />
                 <div className="grid gap-3 sm:grid-cols-3">
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Kategorie</span>
+                        <span className="mb-1 block text-muted">Kategorie</span>
                         <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value as DocumentCategory)}
@@ -116,16 +116,16 @@ export default function Documents() {
                         </select>
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Titel</span>
+                        <span className="mb-1 block text-muted">Titel</span>
                         <input value={title} onChange={(e) => setTitle(e.target.value)} className={INPUT} />
                     </label>
                     <label className="block text-sm">
-                        <span className="mb-1 block text-slate-400">Datum</span>
+                        <span className="mb-1 block text-muted">Datum</span>
                         <input type="date" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} className={INPUT} />
                     </label>
                 </div>
                 <label className="block text-sm">
-                    <span className="mb-1 block text-slate-400">Notiz</span>
+                    <span className="mb-1 block text-muted">Notiz</span>
                     <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={INPUT} />
                 </label>
                 <button type="submit" className={BUTTON} disabled={uploading || !file}>
@@ -142,22 +142,22 @@ export default function Documents() {
                 </div>
                 {preview && preview.pages > 0 ? (
                     <>
-                        <ol className="list-decimal pl-5 text-sm text-slate-300">
+                        <ol className="list-decimal pl-5 text-sm text-ink">
                             {preview.parts.map((p) => (
                                 <li key={p.id}>
-                                    {p.title} <span className="text-slate-400">({p.pages} S.)</span>
+                                    {p.title} <span className="text-muted">({p.pages} S.)</span>
                                 </li>
                             ))}
                         </ol>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted">
                             {preview.pages} Seiten · etwa {formatSize(preview.size)}
                         </p>
                     </>
                 ) : (
-                    <p className="text-sm text-slate-400">Noch keine Unterlage im Dossier.</p>
+                    <p className="text-sm text-muted">Noch keine Unterlage im Dossier.</p>
                 )}
                 {preview && preview.skipped.length > 0 && (
-                    <ul className="text-xs text-amber-300">
+                    <ul className="text-xs text-warning">
                         {preview.skipped.map((s) => (
                             <li key={s.id}>
                                 Nicht im Dossier: {s.title} ({s.reason})
@@ -175,7 +175,7 @@ export default function Documents() {
                 return (
                     <section key={c} className="space-y-2">
                         <h2 className="text-lg font-semibold">
-                            {CATEGORY_LABELS[c]} <span className="text-sm text-slate-400">({inCategory.length})</span>
+                            {CATEGORY_LABELS[c]} <span className="text-sm text-muted">({inCategory.length})</span>
                         </h2>
                         <ul className="space-y-2">
                             {current.map((d) => (
@@ -192,7 +192,7 @@ export default function Documents() {
                             <div className="space-y-2">
                                 <button
                                     type="button"
-                                    className="text-sm text-slate-400 hover:text-white"
+                                    className="text-sm text-muted hover:text-ink"
                                     onClick={() => setOpenOutdated((o) => ({ ...o, [c]: !o[c] }))}
                                 >
                                     {openOutdated[c] ? '▾' : '▸'} Veraltet ({outdated.length})

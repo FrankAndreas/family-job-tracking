@@ -6,10 +6,11 @@ import type { Integration, IntegrationState, Integrations } from '../../types';
 import { BUTTON_SECONDARY, CARD } from '../../ui';
 
 const STATE_STYLES: Record<IntegrationState, { label: string; className: string }> = {
-    ok: { label: 'OK', className: 'bg-emerald-700' },
-    waiting: { label: 'Wartet', className: 'bg-amber-700' },
-    error: { label: 'Fehler', className: 'bg-red-600' },
-    not_configured: { label: 'Nicht konfiguriert', className: 'bg-slate-600' },
+    // Fill and text together: dark text on the theme's light state colours
+    ok: { label: 'OK', className: 'bg-success text-page' },
+    waiting: { label: 'Wartet', className: 'bg-warning text-page' },
+    error: { label: 'Fehler', className: 'bg-danger text-page' },
+    not_configured: { label: 'Nicht konfiguriert', className: 'bg-pressed text-ink' },
 };
 
 const DETAIL_LABELS: Record<string, string> = {
@@ -43,18 +44,18 @@ function IntegrationCard({ title, integration, help, children }: CardProps) {
         <div className={`${CARD} space-y-2`}>
             <div className="flex items-center gap-2">
                 <h3 className="mr-auto font-semibold">{title}</h3>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold text-white ${style.className}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.className}`}>
                     {style.label}
                 </span>
             </div>
             {integration.state === 'not_configured' ? (
-                <p className="text-sm text-slate-400">{help}</p>
+                <p className="text-sm text-muted">{help}</p>
             ) : (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                     {Object.entries(integration.details).map(([key, value]) => (
                         <Fragment key={key}>
-                            <dt className="text-slate-400">{DETAIL_LABELS[key] ?? key}</dt>
-                            <dd className={`break-words ${key === 'last_error' && value ? 'text-red-300' : ''}`}>
+                            <dt className="text-muted">{DETAIL_LABELS[key] ?? key}</dt>
+                            <dd className={`break-words ${key === 'last_error' && value ? 'text-danger' : ''}`}>
                                 {formatValue(value)}
                             </dd>
                         </Fragment>
@@ -62,7 +63,7 @@ function IntegrationCard({ title, integration, help, children }: CardProps) {
                 </dl>
             )}
             {integration.warnings.map((warning) => (
-                <p key={warning} className="text-sm text-amber-300">
+                <p key={warning} className="text-sm text-warning">
                     ⚠ {warning}
                 </p>
             ))}
