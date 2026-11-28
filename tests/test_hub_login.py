@@ -265,11 +265,19 @@ def test_upgrade_of_an_old_database(tmp_path):
     upgrade.upgrade(engine)  # a second start changes nothing
     with sqlite3.connect(path) as conn:
         columns = [r[1] for r in conn.execute("PRAGMA table_info(users)")]
-        assert "pin_hash" not in columns and {"hub_id", "is_active", "email_from_hub"} <= set(columns)
+        assert "pin_hash" not in columns and {"hub_id", "is_active", "email_from_hub", "theme"} <= set(columns)
         assert conn.execute("SELECT name, email, is_admin, is_active, hub_id FROM users").fetchall() == [
             ("Papa", "papa@example.ch", 1, 1, None)
         ]
 
+
+
+def test_theme_follows_the_hub(client, family_hub):
+    family_hub.add("Beat", "CHILD")
+    assert me(client, login(client, "Beat")).json()["theme"] == "aurora"
+    # Passed on as the hub sends it: the page decides what it can show
+    family_hub.set_theme("Beat", "daely")
+    assert me(client, login(client, "Beat")).json()["theme"] == "daely"
 
 def test_missing_address_hint_points_to_the_hub(client, family_hub, db):
     from app import integrations

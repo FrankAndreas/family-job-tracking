@@ -38,6 +38,13 @@ class UserOut(BaseModel):
     wants_reminders: bool
     # The address comes from the family hub: changed there
     email_from_hub: bool = False
+    # The person's look from the family hub (family-hub-theme); the page shows the default for one it doesn't know
+    theme: str = "aurora"
+
+    @field_validator("theme", mode="before")
+    @classmethod
+    def default_theme(cls, value: str | None) -> str:
+        return value or "aurora"
 
 
 class MePatch(BaseModel):

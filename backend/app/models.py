@@ -50,6 +50,8 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     # The address comes from the hub (its tile for this app shares them): changed there, not here
     email_from_hub = Column(Boolean, default=False, nullable=False)
+    # The person's look in the family hub (family-hub-theme), as the hub sends it; None: the default (Aurora)
+    theme = Column(String(20))
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
 

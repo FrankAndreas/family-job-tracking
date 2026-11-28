@@ -18,6 +18,9 @@ def upgrade(engine: Engine) -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
         if "email_from_hub" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN email_from_hub BOOLEAN NOT NULL DEFAULT 0"))
+        # The person's theme from the hub (themes 2026-11-28)
+        if "theme" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN theme VARCHAR(20)"))
         # SQLite 3.35+ drops a column in place (none of these is in an index or constraint)
         for gone in ("pin_hash", "failed_logins", "locked_until"):
             if gone in columns:

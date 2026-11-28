@@ -119,6 +119,7 @@ def _apply(db: Session, people: list[hub.HubPerson]) -> None:
         if person.email_shared:
             row.email = person.email
         row.email_from_hub = person.email_shared
+        row.theme = person.theme
         row.is_active = True
     for row in rows:
         if row.id not in listed:
