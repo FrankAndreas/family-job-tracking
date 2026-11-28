@@ -15,7 +15,7 @@ import type {
 // What the API answers in the browser tests, typed with the frontend's own types (npm run type-check), so a changed
 // answer shows here. Invented people and companies only: the repository is public
 
-export const LENA: User = { id: 1, name: 'Lena', is_admin: true, email: 'lena@example.org', wants_reminders: true, email_from_hub: true };
+export const LENA: User = { id: 1, name: 'Lena', is_admin: true, email: 'lena@example.org', wants_reminders: true, email_from_hub: true, theme: 'aurora' };
 
 const SUMMARY: ApplicationSummary = {
     id: 1,

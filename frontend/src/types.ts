@@ -12,6 +12,8 @@ export interface User {
     wants_reminders: boolean;
     // The address comes from the family hub (its tile for this app shares them): changed there
     email_from_hub: boolean;
+    // The person's look from the family hub (family-hub-theme)
+    theme: string;
 }
 
 export interface Attachment {
